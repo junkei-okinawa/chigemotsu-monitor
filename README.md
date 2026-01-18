@@ -55,7 +55,7 @@ production/
 ```bash
 # プロジェクトクローン
 git clone <repository-url> chigemotsu
-cd chigemotsu/monitor
+cd chigemotsu/chigemotsu-monitor
 
 # 自動インストール実行
 ./setup/install.sh
@@ -115,7 +115,7 @@ python scripts/test_line_notification.py --test simple  # シンプル通知
 
 `/etc/motion/motion.conf` に以下を追加:
 ```
-on_picture_save /path/to/chigemotsu/monitor/scripts/chigemotsu_detect.sh %f
+on_picture_save /path/to/chigemotsu/chigemotsu-monitor/scripts/chigemotsu_detect.sh %f
 ```
 
 ## 📋 コマンドリファレンス
@@ -319,7 +319,7 @@ sudo vim /etc/motion/motion.conf
 2. **設定追加**
 ```
 # ちげもつ判別連携
-on_picture_save /home/pi/chigemotsu/monitor/scripts/chigemotsu_detect.sh %f
+on_picture_save /home/pi/chigemotsu/chigemotsu-monitor/scripts/chigemotsu_detect.sh %f
 ```
 
 3. **権限設定**

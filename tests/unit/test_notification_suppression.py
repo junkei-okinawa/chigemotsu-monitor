@@ -1,11 +1,10 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from pathlib import Path
 from scripts.chigemotsu_pipeline import ChigemotsuPipeline
 
 import tempfile
 import shutil
-import os
 
 @pytest.fixture
 def mock_pipeline():

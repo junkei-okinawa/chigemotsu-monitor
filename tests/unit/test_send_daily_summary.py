@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import sys
 from pathlib import Path
 
@@ -22,18 +21,8 @@ def test_send_daily_summary_success():
         notifier_instance = MockNotifier.return_value
         notifier_instance.send_message.return_value = True
 
-        # main関数実行（sys.exitをキャッチ）
-        # main()は成功時何も返さず終了する仕様（sys.exitなしの場合はreturn None）
-        # ただしスクリプトは成功時にprintして終了、失敗時にsys.exit(1)
-        
-        # main関数の sys.exit(1) をモック化してもいいが、
-        # 成功時はsys.exit呼ばない実装になっているはず
-        try:
-            main()
-        except SystemExit as e:
-            # 成功時もexitしない実装ならここは通らない
-            # 失敗時のみexit(1)するなら、ここでアサーション
-            assert e.code == 0
+        # main関数実行
+        main()
         
         # 検証: get_daily_statsが呼ばれたか
         db_instance.get_daily_stats.assert_called_once()

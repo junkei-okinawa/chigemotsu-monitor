@@ -150,7 +150,7 @@ class ChigemotsuPipeline:
                 return True
 
             # Step 5: LINE通知送信
-            self.logger.info("Step 2: LINE通知を送信中...")
+            self.logger.info("Step 5: LINE通知を送信中...")
 
             if class_name in ["chige", "motsu"]:
                 # 信頼度をパーセント表示に変換
@@ -187,10 +187,6 @@ class ChigemotsuPipeline:
                 total_time = time.time() - start_time
                 self.logger.info(f"パイプライン処理完了 (総処理時間: {total_time:.3f}秒)")
 
-                return True
-            else:
-                self.logger.info(f"検出されたクラスは通知対象外: {class_name}")
-                self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
                 return True
 
         except Exception as e:

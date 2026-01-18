@@ -21,8 +21,11 @@ echo "2. 毎日 23:59 - システムリブート"
 crontab -l > mycron.backup 2>/dev/null || true
 
 # 既存の設定を削除（重複防止）
-sed -i '/send_daily_summary.py/d' mycron.backup
-sed -i '/sudo reboot/d' mycron.backup
+if [ -s mycron.backup ]; then
+    tmpfile="$(mktemp)"
+    sed -e '/send_daily_summary.py/d' -e '/sudo reboot/d' mycron.backup > "$tmpfile"
+    mv "$tmpfile" mycron.backup
+fi
 
 # 新しい設定を追加
 echo "50 23 * * * ${PYTHON_EXEC} ${SCRIPTS_DIR}/send_daily_summary.py >> ${BASE_DIR}/logs/cron_summary.log 2>&1" >> mycron.backup

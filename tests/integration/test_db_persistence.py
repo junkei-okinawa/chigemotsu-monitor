@@ -4,10 +4,8 @@ from unittest.mock import MagicMock, patch
 from pathlib import Path
 from scripts.chigemotsu_pipeline import ChigemotsuPipeline
 from scripts.db_manager import DetectionDBManager
-
 import tempfile
 import shutil
-import os
 
 @pytest.fixture
 def integration_env():

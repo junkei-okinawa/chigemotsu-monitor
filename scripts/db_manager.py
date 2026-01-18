@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict
 
 class DetectionDBManager:
     """検出結果の保存と統計情報の取得を行うデータベースマネージャー"""
@@ -57,7 +57,7 @@ class DetectionDBManager:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT class_name, COUNT(*) FROM detections
-                WHERE timestamp > ?
+                WHERE timestamp >= ?
                 GROUP BY class_name
             """, (today_start,))
             return dict(cursor.fetchall())

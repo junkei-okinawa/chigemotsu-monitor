@@ -6,7 +6,6 @@ from scripts.db_manager import DetectionDBManager
 
 import tempfile
 import shutil
-import os
 
 @pytest.fixture
 def temp_db():
@@ -85,7 +84,7 @@ def test_get_daily_stats(db_manager, temp_db):
     with sqlite3.connect(temp_db) as conn:
         conn.execute(
             "INSERT INTO detections (timestamp, class_name, confidence, is_notified) VALUES (?, ?, ?, ?)",
-            (yesterday, "chige", 0.9, 1)
+            (yesterday.isoformat(), "chige", 0.9, 1)
         )
     
     stats = db_manager.get_daily_stats()

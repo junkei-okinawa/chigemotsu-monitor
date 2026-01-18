@@ -1,0 +1,96 @@
+import sqlite3
+import pytest
+from datetime import datetime, timedelta
+from pathlib import Path
+from scripts.db_manager import DetectionDBManager
+
+import tempfile
+import shutil
+import os
+
+@pytest.fixture
+def temp_db():
+    """テスト用の一時DBパスを提供するフィクスチャ"""
+    tmp_dir = tempfile.mkdtemp()
+    db_path = Path(tmp_dir) / "test_detection.db"
+    yield str(db_path)
+    # クリーンアップ
+    shutil.rmtree(tmp_dir)
+
+@pytest.fixture
+def db_manager(temp_db):
+    """DBマネージャーのインスタンスを提供するフィクスチャ"""
+    return DetectionDBManager(db_path=temp_db)
+
+def test_init_db(temp_db):
+    """DB初期化のテスト"""
+    DetectionDBManager(db_path=temp_db)
+    assert Path(temp_db).exists()
+    
+    with sqlite3.connect(temp_db) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='detections'")
+        assert cursor.fetchone() is not None
+
+def test_add_detection(db_manager, temp_db):
+    """検出結果の追加テスト"""
+    db_manager.add_detection("chige", 0.95, "/tmp/image.jpg", True)
+    
+    with sqlite3.connect(temp_db) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT class_name, confidence, is_notified FROM detections")
+        row = cursor.fetchone()
+        assert row == ("chige", 0.95, 1)
+
+def test_get_recent_notification(db_manager):
+    """直近の通知確認テスト"""
+    # 1. まだ通知がない場合
+    assert db_manager.get_recent_notification("chige", minutes=5) is False
+    
+    # 2. 通知を追加（通知済みフラグ=True）
+    db_manager.add_detection("chige", 0.9, "img1.jpg", True)
+    assert db_manager.get_recent_notification("chige", minutes=5) is True
+    
+    # 3. 別のクラスの場合
+    assert db_manager.get_recent_notification("motsu", minutes=5) is False
+    
+    # 4. 通知フラグ=Falseの場合
+    db_manager.add_detection("motsu", 0.8, "img2.jpg", False)
+    assert db_manager.get_recent_notification("motsu", minutes=5) is False
+
+def test_get_recent_notification_time_limit(db_manager, temp_db):
+    """時間の境界値テスト"""
+    # 10分前のデータを手動で挿入
+    old_time = (datetime.now() - timedelta(minutes=10)).isoformat()
+    with sqlite3.connect(temp_db) as conn:
+        conn.execute(
+            "INSERT INTO detections (timestamp, class_name, confidence, is_notified) VALUES (?, ?, ?, ?)",
+            (old_time, "chige", 0.9, 1)
+        )
+    
+    # 5分以内ならFalseになるはず
+    assert db_manager.get_recent_notification("chige", minutes=5) is False
+    # 15分以内ならTrueになるはず
+    assert db_manager.get_recent_notification("chige", minutes=15) is True
+
+def test_get_daily_stats(db_manager, temp_db):
+    """日次統計のテスト"""
+    # 今日のデータ
+    db_manager.add_detection("chige", 0.9, "img1.jpg", True)
+    db_manager.add_detection("chige", 0.8, "img2.jpg", False)
+    db_manager.add_detection("motsu", 0.9, "img3.jpg", True)
+    
+    # 昨日のデータを手動挿入
+    yesterday = datetime.now() - timedelta(days=1)
+    with sqlite3.connect(temp_db) as conn:
+        conn.execute(
+            "INSERT INTO detections (timestamp, class_name, confidence, is_notified) VALUES (?, ?, ?, ?)",
+            (yesterday, "chige", 0.9, 1)
+        )
+    
+    stats = db_manager.get_daily_stats()
+    
+    # 今日の分だけ集計されているか確認
+    assert stats["chige"] == 2  # 昨日のは含まない
+    assert stats["motsu"] == 1
+    assert "other" not in stats

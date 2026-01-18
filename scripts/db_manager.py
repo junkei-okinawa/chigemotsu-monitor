@@ -18,7 +18,7 @@ class DetectionDBManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS detections (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    timestamp TEXT NOT NULL,
                     class_name TEXT NOT NULL,
                     confidence REAL NOT NULL,
                     image_path TEXT,
@@ -29,17 +29,18 @@ class DetectionDBManager:
 
     def add_detection(self, class_name: str, confidence: float, image_path: str, is_notified: bool):
         """検出結果を保存"""
+        timestamp = datetime.now().isoformat()
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO detections (class_name, confidence, image_path, is_notified)
-                VALUES (?, ?, ?, ?)
-            """, (class_name, confidence, image_path, is_notified))
+                INSERT INTO detections (timestamp, class_name, confidence, image_path, is_notified)
+                VALUES (?, ?, ?, ?, ?)
+            """, (timestamp, class_name, confidence, image_path, is_notified))
             conn.commit()
 
     def get_recent_notification(self, class_name: str, minutes: int = 5) -> bool:
         """指定された時間内に同じクラスの通知が行われたかを確認"""
-        threshold_time = datetime.now() - timedelta(minutes=minutes)
+        threshold_time = (datetime.now() - timedelta(minutes=minutes)).isoformat()
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -51,7 +52,7 @@ class DetectionDBManager:
 
     def get_daily_stats(self) -> Dict[str, int]:
         """今日の検出統計を取得"""
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""

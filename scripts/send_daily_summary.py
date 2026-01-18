@@ -18,10 +18,15 @@ try:
     from line_image_notifier import LineImageNotifier
     from db_manager import DetectionDBManager
 except ImportError as e:
-    print(f"❌ 必要なモジュールがインポートできません: {e}")
-    sys.exit(1)
+    # インポートエラーは記録するが、テストコレクションを妨げないようここでは終了しない
+    LineImageNotifier = None
+    DetectionDBManager = None
+    import_error = e
 
 def main():
+    if LineImageNotifier is None or DetectionDBManager is None:
+        print(f"❌ 必要なモジュールがインポートされていないため実行できません: {import_error}")
+        sys.exit(1)
     try:
         # コンポーネント初期化
         db_manager = DetectionDBManager(db_path=str(project_root / "logs" / "detection.db"))

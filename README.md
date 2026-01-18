@@ -424,35 +424,9 @@ python -v scripts/integrated_detection.py --test
 - [MOTION_INTEGRATION.md](docs/MOTION_INTEGRATION.md) - Motion連携設定詳細
 - [DEPLOYMENT.md](docs/DEPLOYMENT.md) - 本番デプロイ手順
 
-## 🤝 コントリビューション
-
-1. フォークしてクローン
-2. フィーチャーブランチ作成
-3. 変更をコミット
-4. テスト実行: `make test`
-5. プルリクエスト送信
-
 ## 📄 ライセンス
 
 MIT License - 詳細は [LICENSE](LICENSE) を参照
-
-## 🎉 更新履歴
-
-### v1.1.0 (2025-07-27)
-- ✅ 責務分離アーキテクチャの実装
-- ✅ `chigemotsu_pipeline.py` 統合パイプライン追加
-- ✅ TensorFlow Lite推論エンジン（`integrated_detection.py`）
-- ✅ LINE通知システム（`line_image_notifier.py`）の分離
-- ✅ motion連携でのsudo実行対応
-
-### v1.0.0 (2025-07-27)
-- ✅ Raspberry Pi Zero (ARM v6l) 完全対応
-- ✅ TensorFlow Lite Micro Runtime 完全互換モデル  
-- ✅ Float32量子化による安定した推論
-- ✅ 全機能テスト成功確認
-- ✅ Motion連携の完全自動化
-- ✅ LINE通知システムの実証済み動作
-- ✅ Cloudflare R2クラウドストレージ統合
 
 ---
 

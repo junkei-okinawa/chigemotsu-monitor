@@ -1,0 +1,34 @@
+{
+  "model": {
+    "model_path": "./models/mobilenet_v2_tensorflow_float32_20250801.tflite",
+    "class_names": ["chige", "motsu", "other"],
+    "threshold": 0.6,
+    "timeout_seconds": 60
+  },
+  "line": {
+    "credentials_file": "./line_credentials.json",
+    "api_url": "https://api.line.me/v2/bot/message/push",
+    "timeout_seconds": 15,
+    "retry_count": 3,
+    "notification_enabled": true,
+    "include_confidence": true
+  },
+  "r2": {
+    "credentials_file": "./r2_credentials.json",
+    "upload_enabled": true,
+    "public_url_enabled": true
+  },
+  "motion": {
+    "image_formats": [".jpg", ".jpeg", ".png"],
+    "cleanup_days": 2,
+    "max_file_size_mb": 10,
+    "filename_pattern": "(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2})(?P<hour>\\d{2})(?P<minute>\\d{2})(?P<second>\\d{2})-(?P<seq>\\d{2})\\.jpg"
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(levelname)s - %(message)s",
+    "file": "./logs/detection.log",
+    "rotation_days": 14,
+    "max_log_files": 30
+  }
+}

@@ -1,0 +1,8 @@
+include README.md
+include MOTION_INTEGRATION.md
+recursive-include config *.json *.json.sample
+recursive-include scripts *.sh
+recursive-include models *.tflite
+exclude *.log
+recursive-exclude __pycache__ *
+recursive-exclude *.egg-info *

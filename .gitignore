@@ -1,0 +1,33 @@
+# --- Python一般 ---
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# --- ビルド・パッケージ情報 ---
+*.egg-info/
+dist/
+build/
+
+# --- ログ・データ ---
+logs/
+*.log
+
+# --- テスト関連 ---
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- 機密情報 (絶対にコミットしない) ---
+config/.env
+config/line_credentials.json
+config/r2_credentials.json
+# config/config.json # config.jsonはテンプレート的な役割も兼ねているようなので、中身に機密情報がなければコミットしても良いですが、一旦保留。現状は機密情報リストには入れていません。
+
+# --- OS・エディタ設定 ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- その他一時ファイル ---
+temp/

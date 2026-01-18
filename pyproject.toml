@@ -1,0 +1,200 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chigemotsu-production"
+version = "1.0.0"
+description = "Chigemotsu Cat Detection Production System"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Chigemotsu Project"}
+]
+keywords = ["computer-vision", "tensorflow", "raspberry-pi", "line-bot", "object-detection"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Graphics :: Capture :: Digital Camera",
+]
+
+# 基本依存関係（Raspberry Pi Zero対応）
+dependencies = [
+    "boto3>=1.26.0,<2.0.0",
+    "botocore>=1.29.0,<2.0.0",
+    "requests>=2.28.0,<3.0.0",
+    "Pillow>=9.0.0,<12.0.0",
+    "numpy>=1.21.0,<2.0.0",  # NumPy 1.x互換性を保持
+]
+
+[project.optional-dependencies]
+# Raspberry Pi用依存関係（TensorFlow Lite）
+raspberry-pi = [
+    "tflite-runtime>=2.11.0,<3.0.0",
+]
+
+# 開発用依存関係（フル機能版）
+dev = [
+    "tensorflow>=2.11.0,<3.0.0",
+    "black>=22.0.0,<25.0.0",
+    "flake8>=5.0.0,<8.0.0",
+    "mypy>=1.0.0,<2.0.0",
+    "pytest>=7.0.0,<9.0.0",
+    "pytest-cov>=4.0.0,<6.0.0",
+    "pre-commit>=2.20.0,<4.0.0",
+]
+
+# テスト用依存関係
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.8.0",
+    "pytest-xdist>=3.0.0",  # 並列テスト実行
+    "pytest-watch>=4.2.0",  # ファイル変更監視
+    "pytest-html>=3.1.0",   # HTMLレポート生成
+]
+
+# ドキュメント生成用
+docs = [
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/username/chigemotsu"
+"Bug Reports" = "https://github.com/username/chigemotsu/issues"
+"Source" = "https://github.com/username/chigemotsu"
+
+[project.scripts]
+# CLIコマンドの定義
+chigemotsu-detect = "scripts.integrated_detection:main"
+chigemotsu-line-test = "scripts.test_line_notification:main"
+chigemotsu-r2-upload = "scripts.r2_uploader:main"
+chigemotsu-line-image = "scripts.line_image_notifier:main"
+
+[tool.setuptools]
+packages = ["scripts", "config"]
+include-package-data = true
+
+[tool.setuptools.package-dir]
+scripts = "scripts"
+config = "config"
+
+[tool.setuptools.package-data]
+config = ["*.json"]
+scripts = ["*.sh"]
+
+# Black設定（コードフォーマッター）
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# isort設定（インポート整理）
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["scripts", "config"]
+
+# MyPy設定（型チェック）
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "boto3.*",
+    "botocore.*",
+    "tensorflow.*",
+    "tflite_runtime.*",
+    "numpy.*",
+    "PIL.*",
+]
+ignore_missing_imports = true
+
+# Pytest設定
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --tb=short --strict-markers --strict-config --disable-warnings"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "raspberry_pi: marks tests that require Raspberry Pi hardware",
+]
+
+# Coverage設定
+[tool.coverage.run]
+source = ["scripts"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Flake8設定（リンター）
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+per-file-ignores = [
+    "__init__.py:F401",
+]

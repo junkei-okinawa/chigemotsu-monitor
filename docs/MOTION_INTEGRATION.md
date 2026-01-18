@@ -35,7 +35,7 @@ picture_filename %Y%m%d%H%M%S-%q
 ### 2. chigemotsu判別の呼び出し設定
 ```conf
 # 画像保存時にchigemotsu判別を実行
-on_picture_save /home/pi/chigemotsu/production/scripts/chigemotsu_detect.sh %f
+on_picture_save /home/pi/chigemotsu/monitor/scripts/chigemotsu_detect.sh %f
 ```
 
 ## chigemotsu_detect.shスクリプト作成
@@ -44,19 +44,19 @@ motion.confから呼び出されるシェルスクリプトを作成します：
 
 ```bash
 #!/bin/bash
-# /home/pi/chigemotsu/production/scripts/chigemotsu_detect.sh
+# /home/pi/chigemotsu/monitor/scripts/chigemotsu_detect.sh
 
 # 引数として画像パスを受け取る
 IMAGE_PATH="$1"
 
 # ログファイル
-LOG_FILE="/home/pi/chigemotsu/production/logs/motion_integration.log"
+LOG_FILE="/home/pi/chigemotsu/monitor/logs/motion_integration.log"
 
 # 現在時刻をログに記録
 echo "$(date): Motion detected, processing image: $IMAGE_PATH" >> "$LOG_FILE"
 
 # 仮想環境をアクティベート（必要に応じて）
-cd /home/pi/chigemotsu/production
+cd /home/pi/chigemotsu/monitor
 source .venv/bin/activate
 
 # chigemotsu判別を実行
@@ -75,13 +75,13 @@ fi
 ### 1. スクリプトの作成と権限設定
 ```bash
 # スクリプトを作成
-sudo nano /home/pi/chigemotsu/production/scripts/chigemotsu_detect.sh
+sudo nano /home/pi/chigemotsu/monitor/scripts/chigemotsu_detect.sh
 
 # 実行権限を付与
-chmod +x /home/pi/chigemotsu/production/scripts/chigemotsu_detect.sh
+chmod +x /home/pi/chigemotsu/monitor/scripts/chigemotsu_detect.sh
 
 # ログディレクトリを作成
-mkdir -p /home/pi/chigemotsu/production/logs
+mkdir -p /home/pi/chigemotsu/monitor/logs
 ```
 
 ### 2. motion.confの編集
@@ -103,7 +103,7 @@ sudo systemctl status motion
 ### 1. 手動テスト
 ```bash
 # テスト画像で動作確認
-cd /home/pi/chigemotsu/production
+cd /home/pi/chigemotsu/monitor
 python3 scripts/integrated_detection.py --test
 
 # 特定の画像で確認
@@ -116,7 +116,7 @@ python3 scripts/integrated_detection.py /path/to/test/image.jpg
 sudo tail -f /var/log/motion/motion.log
 
 # chigemotsu統合ログを確認
-tail -f /home/pi/chigemotsu/production/logs/motion_integration.log
+tail -f /home/pi/chigemotsu/monitor/logs/motion_integration.log
 
 # 統計情報を確認
 python3 scripts/integrated_detection.py --stats
@@ -129,7 +129,7 @@ python3 scripts/integrated_detection.py --stats
 1. **権限エラー**
    ```bash
    # スクリプトに実行権限を付与
-   chmod +x /home/pi/chigemotsu/production/scripts/chigemotsu_detect.sh
+   chmod +x /home/pi/chigemotsu/monitor/scripts/chigemotsu_detect.sh
    ```
 
 2. **Python環境の問題**
@@ -147,15 +147,15 @@ python3 scripts/integrated_detection.py --stats
    ls -la /home/pi/motion_images/
    
    # 設定ファイルの確認
-   cat /home/pi/chigemotsu/production/config/config.json
+   cat /home/pi/chigemotsu/monitor/config/config.json
    ```
 
 ### ログ確認
 
-- **Motion統合ログ**: `/home/pi/chigemotsu/production/logs/motion_integration.log`
-- **chigemotsu検出ログ**: `/home/pi/chigemotsu/production/logs/chigemotsu_detection.log`
-- **LINE通知ログ**: `/home/pi/chigemotsu/production/logs/line_image_notifier.log`
-- **R2アップロードログ**: `/home/pi/chigemotsu/production/logs/r2_uploader.log`
+- **Motion統合ログ**: `/home/pi/chigemotsu/monitor/logs/motion_integration.log`
+- **chigemotsu検出ログ**: `/home/pi/chigemotsu/monitor/logs/chigemotsu_detection.log`
+- **LINE通知ログ**: `/home/pi/chigemotsu/monitor/logs/line_image_notifier.log`
+- **R2アップロードログ**: `/home/pi/chigemotsu/monitor/logs/r2_uploader.log`
 
 ## パフォーマンス調整
 
@@ -197,7 +197,7 @@ After=motion.service
 [Service]
 Type=simple
 User=pi
-ExecStart=/bin/bash -c "tail -f /home/pi/motion_images/*.jpg | while read file; do /home/pi/chigemotsu/production/scripts/chigemotsu_detect.sh \"$file\"; done"
+ExecStart=/bin/bash -c "tail -f /home/pi/motion_images/*.jpg | while read file; do /home/pi/chigemotsu/monitor/scripts/chigemotsu_detect.sh \"$file\"; done"
 Restart=always
 
 [Install]

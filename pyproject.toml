@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "chigemotsu-production"
+name = "chigemotsu-monitor"
 version = "1.0.0"
-description = "Chigemotsu Cat Detection Production System"
+description = "Chigemotsu Cat Detection Monitor System"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}

@@ -62,7 +62,7 @@ Cloudflare R2ストレージを使用してLINE通知に画像を含める機能
 
 ### 1. セットアップ（Raspberry Pi Zero）
 ```bash
-cd /opt/chigemotsu/production/scripts
+cd /opt/chigemotsu/monitor/scripts
 chmod +x setup_line_notifications.sh
 ./setup_line_notifications.sh
 ```
@@ -182,9 +182,9 @@ pip3 install boto3 botocore requests opencv-python tensorflow numpy
 
 ## ログファイル
 
-- `/opt/chigemotsu/production/logs/line_image_notifier.log`
-- `/opt/chigemotsu/production/logs/r2_uploader.log`
-- `/opt/chigemotsu/production/logs/integrated_detection.log`
+- `/opt/chigemotsu/monitor/logs/line_image_notifier.log`
+- `/opt/chigemotsu/monitor/logs/r2_uploader.log`
+- `/opt/chigemotsu/monitor/logs/integrated_detection.log`
 
 ## トラブルシューティング
 

@@ -1,4 +1,4 @@
-# Makefile for chigemotsu production testing
+# Makefile for chigemotsu monitor testing
 
 .PHONY: help test test-unit test-integration test-coverage clean install-dev
 

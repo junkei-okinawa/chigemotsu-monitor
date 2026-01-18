@@ -10,6 +10,22 @@ Motionと連携し、撮影された画像をTensorFlow Liteモデルで解析�
 *   **クラウド連携**: 画像をCloudflare R2へ自動バックアップ。
 *   **Motion連携**: `motion` デーモンからのイベントフックで自動動作。
 
+## 🏗️ システム構成
+
+```
+production/
+├── 📁 config/                        # 設定ファイル
+│   ├── config.json                   # メイン設定
+├── 📁 scripts/                       # 実行スクリプト
+│   ├── chigemotsu_pipeline.py        # 推論→通知統合パイプライン
+│   └── integrated_detection.py       # TensorFlow Lite推論エンジン
+├── 📁 models/                        # AIモデル
+├── 📁 logs/                          # ログファイル
+├── 📁 docs/                          # ドキュメント
+├── 📁 setup/                         # セットアップスクリプト
+└── 📁 tools/                         # 開発・変換ツール
+```
+
 ## クイックスタート
 
 ### 1. インストール

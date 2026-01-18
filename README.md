@@ -12,6 +12,8 @@ Motionと連携し、撮影された画像をTensorFlow Liteモデルで解析�
 
 ## 🏗️ システム構成
 
+![Chigemotsu Monitor Architecture](./static/chigemotsu-monitor.png)
+
 ```
 production/
 ├── 📁 config/                        # 設定ファイル

@@ -30,7 +30,8 @@ production/
 │   ├── chigemotsu_pipeline.py        # 推論→通知統合パイプライン
 │   ├── test_line_notification.py     # 通知テストツール
 │   ├── chigemotsu_detect.sh          # motion連携シェルスクリプト
-│   └── setup_line_notifications.sh   # LINE設定補助スクリプト
+│   ├── setup_line_notifications.sh   # LINE設定補助スクリプト
+│   └── run_tests.py                  # テスト実行ランナー
 ├── 📁 models/                        # AIモデル
 │   └── mobilenet_v2_micro_float32.tflite  # 軽量判別モデル
 ├── 📁 tests/                         # テストスイート
@@ -38,9 +39,13 @@ production/
 │   ├── unit/                         # ユニットテスト
 │   └── integration/                  # 統合テスト
 ├── 📁 logs/                          # ログファイル
+├── 📁 docs/                          # ドキュメント
+├── 📁 setup/                         # セットアップスクリプト
+│   ├── install.sh                    # 自動インストールスクリプト
+│   └── install_tflite_prebuilt.sh    # TensorFlow Lite Runtime セットアップ
+├── 📁 tools/                         # 開発・変換ツール
 ├── pyproject.toml                    # 依存関係設定
-├── install.sh                        # 自動インストールスクリプト
-└── install_tflite_prebuilt.sh        # TensorFlow Lite Runtime セットアップ
+└── Makefile                          # Makeコマンド定義
 ```
 
 ## 🚀 クイックスタート
@@ -53,7 +58,7 @@ git clone <repository-url> chigemotsu
 cd chigemotsu/production
 
 # 自動インストール実行
-./install.sh
+./setup/install.sh
 ```
 
 ### 2. 認証情報設定
@@ -358,7 +363,7 @@ find logs/ -name "*.log*" -mtime +30 -delete
 1. **TensorFlow Lite Runtime エラー**
 ```bash
 # 再インストール
-./install_tflite_prebuilt.sh
+./setup/install_tflite_prebuilt.sh
 ```
 
 2. **パイプライン全体の動作確認**
@@ -414,10 +419,10 @@ python -v scripts/integrated_detection.py --test
 
 ## 📚 関連ドキュメント
 
-- [LINE_CREDENTIALS_SETUP.md](LINE_CREDENTIALS_SETUP.md) - LINE Bot設定詳細
-- [R2_CREDENTIALS_SETUP.md](R2_CREDENTIALS_SETUP.md) - Cloudflare R2設定詳細
-- [MOTION_INTEGRATION.md](MOTION_INTEGRATION.md) - Motion連携設定詳細
-- [DEPLOYMENT.md](DEPLOYMENT.md) - 本番デプロイ手順
+- [LINE_CREDENTIALS_SETUP.md](docs/LINE_CREDENTIALS_SETUP.md) - LINE Bot設定詳細
+- [R2_CREDENTIALS_SETUP.md](docs/R2_CREDENTIALS_SETUP.md) - Cloudflare R2設定詳細
+- [MOTION_INTEGRATION.md](docs/MOTION_INTEGRATION.md) - Motion連携設定詳細
+- [DEPLOYMENT.md](docs/DEPLOYMENT.md) - 本番デプロイ手順
 
 ## 🤝 コントリビューション
 

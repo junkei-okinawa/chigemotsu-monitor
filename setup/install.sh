@@ -61,7 +61,8 @@ source .venv/bin/activate
 # 最適化されたtflite Micro Runtimeをインストール
 if ! ls .venv/lib/python3.9/site-packages/tflite_micro_runtime > /dev/null; then
     echo "Installing tflite_micro_runtime..."
-    bash install_tflite_prebuilt.sh
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    bash "${SCRIPT_DIR}/install_tflite_prebuilt.sh"
 else
     echo "tflite_micro_runtime is already installed."
 fi

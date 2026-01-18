@@ -80,3 +80,17 @@ def test_notification_skipped_low_confidence(mock_pipeline):
     # 検証: DBに未通知(False)として保存
     mock_pipeline.db_manager.add_detection.assert_called_with("chige", 0.5, "test.jpg", False)
 
+def test_notification_skipped_for_other_class(mock_pipeline):
+    """その他のクラス(other)が検出された場合、通知がスキップされ、DBに記録されること"""
+    # 設定: 検出成功(other, 0.9)
+    mock_pipeline.detector.process_image.return_value = {
+        "class_name": "other", "confidence": 0.9, "box": []
+    }
+    
+    # 実行
+    mock_pipeline.process_motion_image("test.jpg")
+    
+    # 検証: 通知なし
+    mock_pipeline.notifier.send_detection_notification.assert_not_called()
+    # 検証: DBに未通知(False)として保存
+    mock_pipeline.db_manager.add_detection.assert_called_with("other", 0.9, "test.jpg", False)

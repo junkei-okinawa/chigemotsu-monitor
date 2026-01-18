@@ -17,6 +17,9 @@ echo "以下のタスクをcrontabに追加します:"
 echo "1. 毎日 23:50 - 日次サマリー通知"
 echo "2. 毎日 23:59 - システムリブート"
 
+# ログディレクトリを作成（Cron実行時に存在しないとエラーになるため）
+mkdir -p "${BASE_DIR}/logs"
+
 # 現在のcrontabをバックアップ
 crontab -l > mycron.backup 2>/dev/null || true
 

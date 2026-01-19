@@ -20,14 +20,30 @@ echo "2. 毎日 23:59 - システムリブート"
 # ログディレクトリを作成（Cron実行時に存在しないとエラーになるため）
 mkdir -p "${BASE_DIR}/logs"
 
+# sudo reboot がパスワードなしで実行できるか事前に検証
+if ! sudo -n reboot --dry-run >/dev/null 2>&1; then
+    echo "ERROR: パスワードなしで 'sudo reboot' を実行できるように sudoers を設定してください。" >&2
+    echo "" >&2
+    echo "推奨設定 (visudo で追加):" >&2
+    echo "    $USER ALL=(root) NOPASSWD: /sbin/reboot, /usr/sbin/reboot, /bin/systemctl reboot, /usr/bin/systemctl reboot" >&2
+    echo "" >&2
+    echo "設定後に、次のコマンドがエラーなく終了することを確認してください:" >&2
+    echo "    sudo -n reboot --dry-run" >&2
+    echo "" >&2
+    echo "sudoers の設定が完了したら、このスクリプトを再実行してください。" >&2
+    exit 1
+fi
+
 # 現在のcrontabをバックアップ
 crontab -l > mycron.backup 2>/dev/null || true
 
 # 既存の設定を削除（重複防止）
 if [ -s mycron.backup ]; then
-    tmpfile="$(mktemp)"
+    tmpfile="$(mktemp)" || { echo "Error: failed to create temporary file." >&2; exit 1; }
+    trap 'rm -f "$tmpfile"' EXIT
     sed -e '/send_daily_summary.py/d' -e '/sudo reboot/d' mycron.backup > "$tmpfile"
     mv "$tmpfile" mycron.backup
+    trap - EXIT
 fi
 
 # 新しい設定を追加

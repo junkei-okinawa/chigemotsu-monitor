@@ -11,7 +11,8 @@ from scripts.send_daily_summary import main
 def test_send_daily_summary_success():
     """日次サマリー送信の成功パターン"""
     with patch('scripts.send_daily_summary.DetectionDBManager') as MockDB, \
-         patch('scripts.send_daily_summary.LineImageNotifier') as MockNotifier:
+         patch('scripts.send_daily_summary.LineImageNotifier') as MockNotifier, \
+         patch('sys.argv', ["send_daily_summary.py"]):
         
         # モックの設定
         db_instance = MockDB.return_value
@@ -40,7 +41,8 @@ def test_send_daily_summary_success():
 def test_send_daily_summary_empty():
     """データが0件の場合のテスト"""
     with patch('scripts.send_daily_summary.DetectionDBManager') as MockDB, \
-         patch('scripts.send_daily_summary.LineImageNotifier') as MockNotifier:
+         patch('scripts.send_daily_summary.LineImageNotifier') as MockNotifier, \
+         patch('sys.argv', ["send_daily_summary.py"]):
         
         db_instance = MockDB.return_value
         db_instance.get_daily_stats.return_value = {}  # 空の辞書

@@ -5,6 +5,9 @@ DBから当日の検出数を集計し、LINEに通知する
 """
 
 import sys
+import argparse
+import traceback
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
@@ -28,10 +31,18 @@ def main():
     if LineImageNotifier is None or DetectionDBManager is None:
         print(f"❌ 必要なモジュールがインポートされていないため実行できません: {import_error}")
         sys.exit(1)
+
+    parser = argparse.ArgumentParser(description="日次サマリー通知スクリプト")
+    parser.add_argument("--config", "-c", help="設定ファイルのパス")
+    args = parser.parse_args()
+
+    config_path = args.config if args.config else project_root / "config" / "config.json"
+
     try:
         # コンポーネント初期化
-        db_manager = DetectionDBManager(db_path=str(project_root / "logs" / "detection.db"))
-        notifier = LineImageNotifier(config_path=project_root / "config" / "config.json")
+        db_path = project_root / "logs" / "detection.db"
+        db_manager = DetectionDBManager(db_path=str(db_path))
+        notifier = LineImageNotifier(config_path=config_path)
 
         # 今日の統計取得
         stats = db_manager.get_daily_stats()
@@ -62,8 +73,13 @@ def main():
             print("❌ 日次サマリーの送信に失敗しました")
             sys.exit(1)
 
-    except Exception as e:
+    except (sqlite3.Error, FileNotFoundError) as e:
         print(f"❌ エラーが発生しました: {e}")
+        traceback.print_exc()
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ 予期せぬエラーが発生しました: {e}")
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -138,31 +138,22 @@ class ChigemotsuPipeline:
 
             # Step 3: LINE通知設定の確認
             notification_enabled = self.config.get("line", {}).get("notification_enabled", True)
-            if not notification_enabled:
-                self.logger.info("LINE通知が無効になっています")
-                self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
-                return True
+            
+            # Step 4: 通知ロジック
+            if notification_enabled and class_name in ["chige", "motsu"]:
+                # 直近の通知を確認（重複抑制）
+                if self.db_manager.get_recent_notification(class_name, minutes=5):
+                    self.logger.info(f"直近5分以内に {class_name} の通知済みのため、通知をスキップします")
+                    self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
+                    return True
 
-            # Step 4: 通知抑制チェック（直近5分以内に同一個体の通知があるか）
-            if self.db_manager.get_recent_notification(class_name, minutes=5):
-                self.logger.info(f"直近5分以内に {class_name} の通知済みのため、通知をスキップします")
-                self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
-                return True
-
-            # Step 5: LINE通知送信
-            self.logger.info("Step 5: LINE通知を送信中...")
-
-            if class_name in ["chige", "motsu"]:
+                self.logger.info("Step 5: LINE通知を送信中...")
+                
                 # 信頼度をパーセント表示に変換
                 confidence_percent = confidence * 100
                 
                 # クラス名を日本語に変換
-                if class_name == "chige":
-                    japanese_class_name = "三毛猫（ちげ）"
-                elif class_name == "motsu":
-                    japanese_class_name = "白黒猫（もつ）"
-                else:
-                    japanese_class_name = class_name
+                japanese_class_name = "三毛猫（ちげ）" if class_name == "chige" else "白黒猫（もつ）"
 
                 # LINE通知送信
                 notification_success = self.notifier.send_detection_notification(
@@ -178,16 +169,20 @@ class ChigemotsuPipeline:
                     self.logger.info("LINE通知の送信に成功しました")
                 else:
                     self.logger.error("LINE通知の送信に失敗しました")
-                    # 通知失敗でもパイプライン全体は成功とする
-                
-                # DBに保存（通知成功時のみ is_notified=True）
-                self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
+            
+            elif not notification_enabled:
+                self.logger.info("LINE通知が無効になっています")
+            else:
+                self.logger.info(f"検出されたクラスは通知対象外: {class_name}")
 
-                # 処理時間をログ出力
-                total_time = time.time() - start_time
-                self.logger.info(f"パイプライン処理完了 (総処理時間: {total_time:.3f}秒)")
+            # DBに保存
+            self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
 
-                return True
+            # 処理時間をログ出力
+            total_time = time.time() - start_time
+            self.logger.info(f"パイプライン処理完了 (総処理時間: {total_time:.3f}秒)")
+
+            return True
 
         except Exception as e:
             self.logger.error(f"パイプライン処理中にエラー: {e}")

@@ -68,15 +68,16 @@ class ChigemotsuPipeline:
             self.logger.error(f"コンポーネントの初期化に失敗: {e}")
             raise
 
-        # 統計情報
+        # 統計情報をDBからロード
+        db_stats = self.db_manager.get_pipeline_stats_summary()
         self.pipeline_stats = {
-            "total_processed": 0,
-            "successful_detections": 0,
-            "notification_sent": 0,
+            "total_processed": db_stats["total_processed"],
+            "successful_detections": db_stats["total_processed"],  # 暫定的に全レコード数
+            "notification_sent": db_stats["notification_sent"],
             "start_time": datetime.now(),
         }
 
-        self.logger.info("ちげもつパイプラインが初期化されました")
+        self.logger.info(f"ちげもつパイプラインが初期化されました (本日の既処理数: {self.pipeline_stats['total_processed']})")
 
     def _setup_logging(self):
         """ログ設定"""
@@ -141,9 +142,9 @@ class ChigemotsuPipeline:
             
             # Step 4: 通知ロジック
             if notification_enabled and class_name in ["chige", "motsu"]:
-                # 直近の通知を確認（重複抑制）
-                if self.db_manager.get_recent_notification(class_name, minutes=5):
-                    self.logger.info(f"直近5分以内に {class_name} の通知済みのため、通知をスキップします")
+                # 直近の検出を確認（重複抑制：過去5分間に閾値以上の検出があるか）
+                if self.db_manager.get_recent_high_confidence_detection(class_name, confidence_threshold, minutes=5):
+                    self.logger.info(f"直近5分以内に {class_name} の高信頼度検出があるため、通知をスキップします")
                     self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
                     return True
 

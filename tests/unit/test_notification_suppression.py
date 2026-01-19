@@ -19,6 +19,11 @@ def mock_pipeline():
          patch('scripts.chigemotsu_pipeline.LineImageNotifier') as MockNotifier, \
          patch('scripts.chigemotsu_pipeline.DetectionDBManager') as MockDB:
         
+        # 統計ロードのモック
+        MockDB.return_value.get_pipeline_stats_summary.return_value = {
+            "total_processed": 0, "notification_sent": 0
+        }
+        
         pipeline = ChigemotsuPipeline(config_path=str(config_path))
         
         # 各コンポーネントのモックを取得
@@ -27,9 +32,6 @@ def mock_pipeline():
         pipeline.db_manager = MockDB.return_value
         
         yield pipeline
-    
-    # クリーンアップ
-    shutil.rmtree(tmp_dir)
 
 def test_notification_sent_when_no_recent_history(mock_pipeline):
     """直近の通知がない場合、通知が送信されること"""
@@ -37,7 +39,7 @@ def test_notification_sent_when_no_recent_history(mock_pipeline):
     mock_pipeline.detector.process_image.return_value = {
         "class_name": "chige", "confidence": 0.9, "box": []
     }
-    mock_pipeline.db_manager.get_recent_notification.return_value = False
+    mock_pipeline.db_manager.get_recent_high_confidence_detection.return_value = False
     mock_pipeline.notifier.send_detection_notification.return_value = True
 
     # 実行
@@ -54,7 +56,7 @@ def test_notification_skipped_when_recent_history_exists(mock_pipeline):
     mock_pipeline.detector.process_image.return_value = {
         "class_name": "chige", "confidence": 0.9, "box": []
     }
-    mock_pipeline.db_manager.get_recent_notification.return_value = True
+    mock_pipeline.db_manager.get_recent_high_confidence_detection.return_value = True
 
     # 実行
     mock_pipeline.process_motion_image("test.jpg")

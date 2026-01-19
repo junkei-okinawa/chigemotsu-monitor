@@ -55,26 +55,54 @@ class DetectionDBManager:
             """, (timestamp, class_name, confidence, image_path, is_notified))
             conn.commit()
 
-    def get_recent_notification(self, class_name: str, minutes: int = 5) -> bool:
+    def get_recent_high_confidence_detection(self, class_name: str, threshold: float, minutes: int = 5) -> bool:
         """
-        指定された時間内に同じクラスの通知が行われたかを確認する
+        指定された時間内に同じクラスで、かつ閾値以上の信頼度の検出があったかを確認する
+        （通知の有無は問わない）
 
         Args:
             class_name (str): 確認対象のクラス名
+            threshold (float): 信頼度の閾値
             minutes (int): 遡る時間（分）。デフォルトは5分。
 
         Returns:
-            bool: 直近に通知済みの場合はTrue、そうでなければFalse
+            bool: 条件に合致する検出がある場合はTrue
         """
         threshold_time = (datetime.now() - timedelta(minutes=minutes)).isoformat()
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT COUNT(*) FROM detections
-                WHERE class_name = ? AND is_notified = 1 AND timestamp > ?
-            """, (class_name, threshold_time))
+                WHERE class_name = ? AND confidence >= ? AND timestamp > ?
+            """, (class_name, threshold, threshold_time))
             count = cursor.fetchone()[0]
             return count > 0
+
+    def get_pipeline_stats_summary(self) -> Dict[str, int]:
+        """
+        パイプライン統計用の日次集計を取得する
+
+        Returns:
+            Dict[str, int]:
+                - total_processed: 本日の全検出数
+                - notification_sent: 本日の通知送信数
+        """
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # 全処理数（本日のレコード数）
+            cursor.execute("SELECT COUNT(*) FROM detections WHERE timestamp >= ?", (today_start,))
+            total_processed = cursor.fetchone()[0]
+            
+            # 通知送信数
+            cursor.execute("SELECT COUNT(*) FROM detections WHERE timestamp >= ? AND is_notified = 1", (today_start,))
+            notification_sent = cursor.fetchone()[0]
+            
+            return {
+                "total_processed": total_processed,
+                "notification_sent": notification_sent
+            }
 
     def get_daily_stats(self) -> Dict[str, int]:
         """

@@ -41,24 +41,38 @@ def test_add_detection(db_manager, temp_db):
         row = cursor.fetchone()
         assert row == ("chige", 0.95, 1)
 
-def test_get_recent_notification(db_manager):
-    """直近の通知確認テスト"""
-    # 1. まだ通知がない場合
-    assert db_manager.get_recent_notification("chige", minutes=5) is False
+def test_get_recent_high_confidence_detection(db_manager):
+    """直近の高信頼度検出確認テスト"""
+    threshold = 0.75
+    # 1. まだ検出がない場合
+    assert db_manager.get_recent_high_confidence_detection("chige", threshold, minutes=5) is False
     
-    # 2. 通知を追加（通知済みフラグ=True）
-    db_manager.add_detection("chige", 0.9, "img1.jpg", True)
-    assert db_manager.get_recent_notification("chige", minutes=5) is True
+    # 2. 高信頼度の検出を追加（通知の有無は問わない）
+    db_manager.add_detection("chige", 0.9, "img1.jpg", False)
+    assert db_manager.get_recent_high_confidence_detection("chige", threshold, minutes=5) is True
     
     # 3. 別のクラスの場合
-    assert db_manager.get_recent_notification("motsu", minutes=5) is False
+    assert db_manager.get_recent_high_confidence_detection("motsu", threshold, minutes=5) is False
     
-    # 4. 通知フラグ=Falseの場合
+    # 4. 信頼度が低い場合
+    db_manager.add_detection("motsu", 0.5, "img2.jpg", True)
+    assert db_manager.get_recent_high_confidence_detection("motsu", threshold, minutes=5) is False
+
+def test_get_pipeline_stats_summary(db_manager):
+    """パイプライン統計サマリーの取得テスト"""
+    # 今日のデータ
+    db_manager.add_detection("chige", 0.9, "img1.jpg", True)
     db_manager.add_detection("motsu", 0.8, "img2.jpg", False)
-    assert db_manager.get_recent_notification("motsu", minutes=5) is False
+    db_manager.add_detection("other", 0.9, "img3.jpg", True)
+    
+    summary = db_manager.get_pipeline_stats_summary()
+    
+    assert summary["total_processed"] == 3
+    assert summary["notification_sent"] == 2
 
 def test_get_recent_notification_time_limit(db_manager, temp_db):
     """時間の境界値テスト"""
+    threshold = 0.75
     # 10分前のデータを手動で挿入
     old_time = (datetime.now() - timedelta(minutes=10)).isoformat()
     with sqlite3.connect(temp_db) as conn:
@@ -68,9 +82,9 @@ def test_get_recent_notification_time_limit(db_manager, temp_db):
         )
     
     # 5分以内ならFalseになるはず
-    assert db_manager.get_recent_notification("chige", minutes=5) is False
+    assert db_manager.get_recent_high_confidence_detection("chige", threshold, minutes=5) is False
     # 15分以内ならTrueになるはず
-    assert db_manager.get_recent_notification("chige", minutes=15) is True
+    assert db_manager.get_recent_high_confidence_detection("chige", threshold, minutes=15) is True
 
 def test_get_daily_stats(db_manager, temp_db):
     """日次統計のテスト"""

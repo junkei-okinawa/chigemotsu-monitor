@@ -15,23 +15,26 @@ def mock_pipeline():
     with open(config_path, 'w') as f:
         json.dump({"line": {"notification_enabled": True}}, f)
 
-    with patch('scripts.chigemotsu_pipeline.ChigemotsuDetector') as MockDetector, \
-         patch('scripts.chigemotsu_pipeline.LineImageNotifier') as MockNotifier, \
-         patch('scripts.chigemotsu_pipeline.DetectionDBManager') as MockDB:
-        
-        # 統計ロードのモック
-        MockDB.return_value.get_pipeline_stats_summary.return_value = {
-            "total_processed": 0, "notification_sent": 0
-        }
-        
-        pipeline = ChigemotsuPipeline(config_path=str(config_path))
-        
-        # 各コンポーネントのモックを取得
-        pipeline.detector = MockDetector.return_value
-        pipeline.notifier = MockNotifier.return_value
-        pipeline.db_manager = MockDB.return_value
-        
-        yield pipeline
+    try:
+        with patch('scripts.chigemotsu_pipeline.ChigemotsuDetector') as MockDetector, \
+             patch('scripts.chigemotsu_pipeline.LineImageNotifier') as MockNotifier, \
+             patch('scripts.chigemotsu_pipeline.DetectionDBManager') as MockDB:
+            
+            # 統計ロードのモック
+            MockDB.return_value.get_pipeline_stats_summary.return_value = {
+                "total_processed": 0, "notification_sent": 0
+            }
+            
+            pipeline = ChigemotsuPipeline(config_path=str(config_path))
+            
+            # 各コンポーネントのモックを取得
+            pipeline.detector = MockDetector.return_value
+            pipeline.notifier = MockNotifier.return_value
+            pipeline.db_manager = MockDB.return_value
+            
+            yield pipeline
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 def test_notification_sent_when_no_recent_history(mock_pipeline):
     """直近の通知がない場合、通知が送信されること"""

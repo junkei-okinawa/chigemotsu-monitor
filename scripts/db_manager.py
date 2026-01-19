@@ -27,8 +27,8 @@ class DetectionDBManager:
             """)
             # インデックス作成（検索パフォーマンス向上）
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_detections_class_notified_time
-                ON detections(class_name, is_notified, timestamp)
+                CREATE INDEX IF NOT EXISTS idx_detections_class_conf_time
+                ON detections(class_name, confidence, timestamp)
             """)
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_detections_timestamp_class
@@ -72,11 +72,13 @@ class DetectionDBManager:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT COUNT(*) FROM detections
-                WHERE class_name = ? AND confidence >= ? AND timestamp > ?
+                SELECT EXISTS(
+                    SELECT 1 FROM detections
+                    WHERE class_name = ? AND confidence >= ? AND timestamp > ?
+                )
             """, (class_name, threshold, threshold_time))
-            count = cursor.fetchone()[0]
-            return count > 0
+            exists = cursor.fetchone()[0]
+            return bool(exists)
 
     def get_pipeline_stats_summary(self) -> Dict[str, int]:
         """

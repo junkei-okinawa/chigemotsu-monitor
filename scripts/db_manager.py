@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict
 
@@ -54,7 +54,7 @@ class DetectionDBManager:
             image_path (str): 保存された画像のパス
             is_notified (bool): LINE通知を送信したかどうか
         """
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -76,7 +76,7 @@ class DetectionDBManager:
         Returns:
             bool: 条件に合致する検出がある場合はTrue
         """
-        threshold_time = (datetime.now() - timedelta(minutes=minutes)).isoformat()
+        threshold_time = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -93,26 +93,32 @@ class DetectionDBManager:
         パイプライン統計用の日次集計を取得する
 
         Note:
-            このシステムでは、タイムスタンプは全て実行環境のローカルタイムゾーンに基づくナイーブなdatetimeオブジェクトとして扱われます。
-            データベースにはISO 8601形式の文字列として保存されます。
+            タイムスタンプはUTCで保存されています。
+            集計はローカル時間（システム時刻）の00:00:00以降を対象とします。
 
         Returns:
             Dict[str, int]:
                 - total_processed: 本日の全検出数
                 - notification_sent: 本日の通知送信数
         """
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        # 現在のローカル時間から、ローカルの「今日の開始時刻（00:00）」を算出
+        now_local = datetime.now().astimezone()
+        today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # UTCに変換して検索クエリに使用
+        today_start_utc = today_start_local.astimezone(timezone.utc).isoformat()
+        
         with sqlite3.connect(self.db_path) as conn:
             # Note: SQLiteの接続コストは比較的小さいが、極めて高頻度なアクセスが発生する場合は
             # Connection poolingや接続の維持を検討すること。現状は堅牢性を重視しメソッド単位で接続する。
             cursor = conn.cursor()
             
             # 全処理数（本日のレコード数）
-            cursor.execute("SELECT COUNT(*) FROM detections WHERE timestamp >= ?", (today_start,))
+            cursor.execute("SELECT COUNT(*) FROM detections WHERE timestamp >= ?", (today_start_utc,))
             total_processed = cursor.fetchone()[0]
             
             # 通知送信数
-            cursor.execute("SELECT COUNT(*) FROM detections WHERE timestamp >= ? AND is_notified = 1", (today_start,))
+            cursor.execute("SELECT COUNT(*) FROM detections WHERE timestamp >= ? AND is_notified = 1", (today_start_utc,))
             notification_sent = cursor.fetchone()[0]
             
             return {
@@ -125,18 +131,25 @@ class DetectionDBManager:
         今日の検出統計を取得する
         
         Note:
-            システムローカル時間の00:00:00以降のデータを集計する。
+            システムローカル時間の00:00:00以降のデータを集計します。
+            内部的にUTCに変換して検索を行います。
 
         Returns:
             Dict[str, int]: クラス名をキー、検出数を値とする辞書
                             例: {'chige': 5, 'motsu': 3}
         """
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        # 現在のローカル時間から、ローカルの「今日の開始時刻（00:00）」を算出
+        now_local = datetime.now().astimezone()
+        today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # UTCに変換して検索クエリに使用
+        today_start_utc = today_start_local.astimezone(timezone.utc).isoformat()
+        
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT class_name, COUNT(*) FROM detections
                 WHERE timestamp >= ?
                 GROUP BY class_name
-            """, (today_start,))
+            """, (today_start_utc,))
             return dict(cursor.fetchall())

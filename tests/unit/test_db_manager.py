@@ -1,6 +1,6 @@
 import sqlite3
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from scripts.db_manager import DetectionDBManager
 
@@ -73,8 +73,8 @@ def test_get_pipeline_stats_summary(db_manager):
 def test_get_recent_notification_time_limit(db_manager, temp_db):
     """時間の境界値テスト"""
     threshold = 0.75
-    # 10分前のデータを手動で挿入
-    old_time = (datetime.now() - timedelta(minutes=10)).isoformat()
+    # 10分前のデータを手動で挿入 (UTC)
+    old_time = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
     with sqlite3.connect(temp_db) as conn:
         conn.execute(
             "INSERT INTO detections (timestamp, class_name, confidence, is_notified) VALUES (?, ?, ?, ?)",
@@ -93,8 +93,8 @@ def test_get_daily_stats(db_manager, temp_db):
     db_manager.add_detection("chige", 0.8, "img2.jpg", False)
     db_manager.add_detection("motsu", 0.9, "img3.jpg", True)
     
-    # 昨日のデータを手動挿入
-    yesterday = datetime.now() - timedelta(days=1)
+    # 昨日のデータを手動挿入 (UTC)
+    yesterday = datetime.now(timezone.utc) - timedelta(days=1)
     with sqlite3.connect(temp_db) as conn:
         conn.execute(
             "INSERT INTO detections (timestamp, class_name, confidence, is_notified) VALUES (?, ?, ?, ?)",

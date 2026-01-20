@@ -41,17 +41,22 @@ if ! sudo -n true >/dev/null 2>&1; then
 fi
 
 # 現在のcrontabをバックアップ
-crontab -l > mycron.backup 2>/dev/null || true
+BACKUP_FILE="$(mktemp)" || {
+    echo "ERROR: バックアップ用一時ファイルの作成に失敗しました。" >&2
+    exit 1
+}
+crontab -l > "$BACKUP_FILE" 2>/dev/null || true
 
 # 既存の設定を削除（重複防止）
-if [ -s mycron.backup ]; then
+if [ -s "$BACKUP_FILE" ]; then
     tmpfile="$(mktemp)" || {
         echo "ERROR: 一時ファイルの作成に失敗しました。" >&2
+        rm -f "$BACKUP_FILE"
         exit 1
     }
-    trap 'rm -f "$tmpfile"' EXIT
-    sed -e '/send_daily_summary.py/d' -e '/sudo reboot/d' mycron.backup > "$tmpfile"
-    mv "$tmpfile" mycron.backup
+    trap 'rm -f "$tmpfile" "$BACKUP_FILE"' EXIT
+    sed -e '/send_daily_summary.py/d' -e '/sudo reboot/d' "$BACKUP_FILE" > "$tmpfile"
+    mv "$tmpfile" "$BACKUP_FILE"
     trap - EXIT
 fi
 
@@ -65,12 +70,12 @@ fi
 # 新しい設定を追加
 # パスにスペースが含まれる可能性を考慮してクォートする
 # サマリー通知はリブート(23:59)の十分前(23:45)に実行する
-echo "45 23 * * * \"${PYTHON_EXEC}\" \"${SCRIPTS_DIR}/send_daily_summary.py\" --config \"${CONFIG_PATH}\" >> \"${BASE_DIR}/logs/cron_summary.log\" 2>&1" >> mycron.backup
-echo "59 23 * * * sudo reboot" >> mycron.backup
+echo "45 23 * * * \"${PYTHON_EXEC}\" \"${SCRIPTS_DIR}/send_daily_summary.py\" --config \"${CONFIG_PATH}\" >> \"${BASE_DIR}/logs/cron_summary.log\" 2>&1" >> "$BACKUP_FILE"
+echo "59 23 * * * sudo reboot" >> "$BACKUP_FILE"
 
 # 新しいcrontabを適用
-crontab mycron.backup
-rm mycron.backup
+crontab "$BACKUP_FILE"
+rm -f "$BACKUP_FILE"
 
 echo ""
 echo "✅ Cron設定が完了しました"

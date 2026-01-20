@@ -21,14 +21,14 @@ echo "2. 毎日 23:59 - システムリブート"
 mkdir -p "${BASE_DIR}/logs"
 
 # sudo reboot がパスワードなしで実行できるか事前に検証
-if ! sudo -n reboot --dry-run >/dev/null 2>&1; then
-    echo "ERROR: パスワードなしで 'sudo reboot' を実行できるように sudoers を設定してください。" >&2
+if ! sudo -n true >/dev/null 2>&1; then
+    echo "ERROR: パスワードなしで sudo コマンドを実行できるように sudoers を設定してください。" >&2
     echo "" >&2
     echo "推奨設定 (visudo で追加):" >&2
     echo "    $USER ALL=(root) NOPASSWD: /sbin/reboot, /usr/sbin/reboot, /bin/systemctl reboot, /usr/bin/systemctl reboot" >&2
     echo "" >&2
     echo "設定後に、次のコマンドがエラーなく終了することを確認してください:" >&2
-    echo "    sudo -n reboot --dry-run" >&2
+    echo "    sudo -n true" >&2
     echo "" >&2
     echo "sudoers の設定が完了したら、このスクリプトを再実行してください。" >&2
     exit 1
@@ -46,8 +46,16 @@ if [ -s mycron.backup ]; then
     trap - EXIT
 fi
 
+# 設定ファイルの存在確認
+CONFIG_PATH="${BASE_DIR}/config/config.json"
+if [ ! -f "$CONFIG_PATH" ]; then
+    echo "WARNING: 設定ファイルが見つかりません: ${CONFIG_PATH}" >&2
+    echo "デフォルト設定で動作する可能性がありますが、確認してください。" >&2
+fi
+
 # 新しい設定を追加
-echo "50 23 * * * ${PYTHON_EXEC} ${SCRIPTS_DIR}/send_daily_summary.py >> ${BASE_DIR}/logs/cron_summary.log 2>&1" >> mycron.backup
+# パスにスペースが含まれる可能性を考慮してクォートする
+echo "50 23 * * * \"${PYTHON_EXEC}\" \"${SCRIPTS_DIR}/send_daily_summary.py\" >> \"${BASE_DIR}/logs/cron_summary.log\" 2>&1" >> mycron.backup
 echo "59 23 * * * sudo reboot" >> mycron.backup
 
 # 新しいcrontabを適用
@@ -61,4 +69,4 @@ crontab -l | tail -n 5
 
 echo ""
 echo "⚠️ 注意: 'sudo reboot' がパスワードなしで実行できることを確認してください。"
-echo "確認コマンド: sudo -n reboot --dry-run"
+echo "確認コマンド: sudo -n true (または実際の再起動テスト)"

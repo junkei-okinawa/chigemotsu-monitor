@@ -8,6 +8,7 @@ import sys
 import argparse
 import traceback
 import sqlite3
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +17,20 @@ script_dir = Path(__file__).parent
 project_root = script_dir.parent
 sys.path.append(str(project_root))
 sys.path.append(str(script_dir))
+
+# ログ設定
+log_dir = project_root / "logs"
+log_dir.mkdir(exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_dir / "daily_summary.log"),
+        logging.StreamHandler(),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 import_error = None
 try:
@@ -29,7 +44,7 @@ except ImportError as e:
 
 def main():
     if LineImageNotifier is None or DetectionDBManager is None:
-        print(f"❌ 必要なモジュールがインポートされていないため実行できません: {import_error}")
+        logger.error(f"必要なモジュールがインポートされていないため実行できません: {import_error}")
         sys.exit(1)
 
     parser = argparse.ArgumentParser(description="日次サマリー通知スクリプト")
@@ -67,19 +82,20 @@ def main():
         )
 
         # 送信
+        logger.info("日次サマリーを送信中...")
         if notifier.send_message(message):
-            print("✅ 日次サマリーの送信に成功しました")
+            logger.info("✅ 日次サマリーの送信に成功しました")
         else:
-            print("❌ 日次サマリーの送信に失敗しました")
+            logger.error("❌ 日次サマリーの送信に失敗しました")
             sys.exit(1)
 
     except (sqlite3.Error, FileNotFoundError) as e:
-        print(f"❌ エラーが発生しました: {e}")
-        traceback.print_exc()
+        logger.error(f"エラーが発生しました: {e}")
+        logger.debug(traceback.format_exc())
         sys.exit(1)
     except Exception as e:
-        print(f"❌ 予期せぬエラーが発生しました: {e}")
-        traceback.print_exc()
+        logger.error(f"予期せぬエラーが発生しました: {e}")
+        logger.debug(traceback.format_exc())
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -7,6 +7,14 @@ class DetectionDBManager:
     """検出結果の保存と統計情報の取得を行うデータベースマネージャー"""
 
     def __init__(self, db_path: str = "logs/detection.db"):
+        """
+        検出結果を保存するSQLiteデータベースの接続先を初期化する
+
+        Args:
+            db_path (str): 使用するSQLiteデータベースファイルのパス。
+                デフォルトは "logs/detection.db" で、このパス配下のディレクトリが存在しない場合は作成されます。
+                また、必要に応じてデータベースとテーブルの初期化を行います。
+        """
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
@@ -84,6 +92,10 @@ class DetectionDBManager:
         """
         パイプライン統計用の日次集計を取得する
 
+        Note:
+            このシステムでは、タイムスタンプは全て実行環境のローカルタイムゾーンに基づくナイーブなdatetimeオブジェクトとして扱われます。
+            データベースにはISO 8601形式の文字列として保存されます。
+
         Returns:
             Dict[str, int]:
                 - total_processed: 本日の全検出数
@@ -91,6 +103,8 @@ class DetectionDBManager:
         """
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         with sqlite3.connect(self.db_path) as conn:
+            # Note: SQLiteの接続コストは比較的小さいが、極めて高頻度なアクセスが発生する場合は
+            # Connection poolingや接続の維持を検討すること。現状は堅牢性を重視しメソッド単位で接続する。
             cursor = conn.cursor()
             
             # 全処理数（本日のレコード数）
@@ -110,7 +124,8 @@ class DetectionDBManager:
         """
         今日の検出統計を取得する
         
-        システムローカル時間の00:00:00以降のデータを集計する。
+        Note:
+            システムローカル時間の00:00:00以降のデータを集計する。
 
         Returns:
             Dict[str, int]: クラス名をキー、検出数を値とする辞書

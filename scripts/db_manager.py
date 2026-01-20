@@ -8,12 +8,12 @@ class DetectionDBManager:
 
     def __init__(self, db_path: str = "logs/detection.db"):
         """
-        検出結果を保存するSQLiteデータベースの接続先を初期化する
+        検出結果を保存するSQLiteデータベースマネージャーとデータベース本体を初期化する
 
         Args:
             db_path (str): 使用するSQLiteデータベースファイルのパス。
                 デフォルトは "logs/detection.db" で、このパス配下のディレクトリが存在しない場合は作成されます。
-                また、必要に応じてデータベースとテーブルの初期化を行います。
+                また、必要に応じてデータベースファイルの作成、テーブルおよびインデックスの初期化を行います。
         """
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)

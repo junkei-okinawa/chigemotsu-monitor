@@ -14,7 +14,7 @@ fi
 
 echo "=== Cron自動タスク設定 ==="
 echo "以下のタスクをcrontabに追加します:"
-echo "1. 毎日 23:50 - 日次サマリー通知"
+echo "1. 毎日 23:45 - 日次サマリー通知"
 echo "2. 毎日 23:59 - システムリブート"
 
 # ログディレクトリを作成（Cron実行時に存在しないとエラーになるため）
@@ -55,7 +55,8 @@ fi
 
 # 新しい設定を追加
 # パスにスペースが含まれる可能性を考慮してクォートする
-echo "50 23 * * * \"${PYTHON_EXEC}\" \"${SCRIPTS_DIR}/send_daily_summary.py\" >> \"${BASE_DIR}/logs/cron_summary.log\" 2>&1" >> mycron.backup
+# サマリー通知はリブート(23:59)の十分前(23:45)に実行する
+echo "45 23 * * * \"${PYTHON_EXEC}\" \"${SCRIPTS_DIR}/send_daily_summary.py\" --config \"${CONFIG_PATH}\" >> \"${BASE_DIR}/logs/cron_summary.log\" 2>&1" >> mycron.backup
 echo "59 23 * * * sudo reboot" >> mycron.backup
 
 # 新しいcrontabを適用

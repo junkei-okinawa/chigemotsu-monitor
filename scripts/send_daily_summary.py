@@ -91,11 +91,11 @@ def main():
 
     except (sqlite3.Error, FileNotFoundError) as e:
         logger.error(f"エラーが発生しました: {e}")
-        logger.debug(traceback.format_exc())
+        logger.error(traceback.format_exc())
         sys.exit(1)
     except Exception as e:
         logger.error(f"予期せぬエラーが発生しました: {e}")
-        logger.debug(traceback.format_exc())
+        logger.error(traceback.format_exc())
         sys.exit(1)
 
 if __name__ == "__main__":

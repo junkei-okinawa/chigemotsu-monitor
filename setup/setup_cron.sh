@@ -39,7 +39,10 @@ crontab -l > mycron.backup 2>/dev/null || true
 
 # 既存の設定を削除（重複防止）
 if [ -s mycron.backup ]; then
-    tmpfile="$(mktemp)" || { echo "Error: failed to create temporary file." >&2; exit 1; }
+    tmpfile="$(mktemp)" || {
+        echo "ERROR: 一時ファイルの作成に失敗しました。" >&2
+        exit 1
+    }
     trap 'rm -f "$tmpfile"' EXIT
     sed -e '/send_daily_summary.py/d' -e '/sudo reboot/d' mycron.backup > "$tmpfile"
     mv "$tmpfile" mycron.backup

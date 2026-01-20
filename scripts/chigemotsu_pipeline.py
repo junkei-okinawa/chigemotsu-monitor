@@ -148,7 +148,7 @@ class ChigemotsuPipeline:
                     self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
                     return True
 
-                self.logger.info("Step 5: LINE通知を送信中...")
+                self.logger.info("Step 4: LINE通知を送信中...")
                 
                 # 信頼度をパーセント表示に変換
                 confidence_percent = confidence * 100

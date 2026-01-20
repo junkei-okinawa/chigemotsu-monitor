@@ -89,7 +89,7 @@ def main():
             logger.error("❌ 日次サマリーの送信に失敗しました")
             sys.exit(1)
 
-    except (sqlite3.Error, FileNotFoundError) as e:
+    except (sqlite3.Error, FileNotFoundError, ValueError) as e:
         logger.error(f"エラーが発生しました: {e}")
         logger.error(traceback.format_exc())
         sys.exit(1)

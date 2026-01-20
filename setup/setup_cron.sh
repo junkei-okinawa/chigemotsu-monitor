@@ -24,7 +24,13 @@ mkdir -p "${BASE_DIR}/logs"
 if ! sudo -n true >/dev/null 2>&1; then
     echo "ERROR: パスワードなしで sudo コマンドを実行できるように sudoers を設定してください。" >&2
     echo "" >&2
-    echo "推奨設定 (visudo で追加):" >&2
+    echo "⚠️ セキュリティ上の注意:" >&2
+    echo "  以下の設定を追加すると、指定したユーザーがパスワードなしでシステムを再起動できるようになります。" >&2
+    echo "  これは利便性と引き換えに権限が緩くなる設定です。運用ポリシーやセキュリティ要件を確認のうえ適用してください。" >&2
+    echo "  必要に応じて、対象ユーザー名やホストを限定したり、再起動専用のユーザーを作成することを検討してください。" >&2
+    echo "  また、sudoers のコマンド指定ではワイルドカード (*) を使わず、下記のように必要なコマンドのみに限定することを推奨します。" >&2
+    echo "" >&2
+    echo "推奨設定例 (visudo で追加):" >&2
     echo "    $USER ALL=(root) NOPASSWD: /sbin/reboot, /usr/sbin/reboot, /bin/systemctl reboot, /usr/bin/systemctl reboot" >&2
     echo "" >&2
     echo "設定後に、次のコマンドがエラーなく終了することを確認してください:" >&2

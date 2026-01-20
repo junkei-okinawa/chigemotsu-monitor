@@ -72,7 +72,7 @@ class ChigemotsuPipeline:
         db_stats = self.db_manager.get_pipeline_stats_summary()
         self.pipeline_stats = {
             "total_processed": db_stats["total_processed"],
-            "successful_detections": db_stats["total_processed"],  # 暫定的に全レコード数
+            "successful_detections": db_stats.get("successful_detections", db_stats["total_processed"]),  # DBに値がなければ全レコード数で初期化
             "notification_sent": db_stats["notification_sent"],
             "start_time": datetime.now(),
         }

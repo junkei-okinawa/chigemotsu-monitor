@@ -43,10 +43,6 @@ except ImportError as e:
     import_error = e
 
 def main():
-    if LineImageNotifier is None or DetectionDBManager is None:
-        logger.error(f"必要なモジュールがインポートされていないため実行できません: {import_error}")
-        sys.exit(1)
-
     parser = argparse.ArgumentParser(description="日次サマリー通知スクリプト")
     parser.add_argument("--config", "-c", help="設定ファイルのパス")
     args = parser.parse_args()
@@ -99,4 +95,7 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
+    if LineImageNotifier is None or DetectionDBManager is None:
+        logger.error(f"必要なモジュールがインポートされていないため実行できません: {import_error}")
+        sys.exit(1)
     main()

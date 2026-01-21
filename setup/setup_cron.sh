@@ -31,7 +31,7 @@ if ! sudo -n true >/dev/null 2>&1; then
     echo "  また、sudoers のコマンド指定ではワイルドカード (*) を使わず、下記のように必要なコマンドのみに限定することを推奨します。" >&2
     echo "" >&2
     echo "推奨設定例 (visudo で追加):" >&2
-    echo "    $USER ALL=(root) NOPASSWD: /sbin/reboot, /usr/sbin/reboot, /bin/systemctl reboot, /usr/bin/systemctl reboot" >&2
+    echo "    $USER ALL=(root) NOPASSWD: /sbin/reboot" >&2
     echo "" >&2
     echo "設定後に、次のコマンドがエラーなく終了することを確認してください:" >&2
     echo "    sudo -n true" >&2

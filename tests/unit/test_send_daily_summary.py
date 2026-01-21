@@ -1,6 +1,6 @@
 import pytest
 import sqlite3
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 from pathlib import Path
 
@@ -90,3 +90,18 @@ def test_send_daily_summary_send_failure():
         with pytest.raises(SystemExit) as e:
             main()
         assert e.value.code == 1
+
+def test_send_daily_summary_with_config_arg():
+    """--config引数が正しくパースされるかのテスト"""
+    custom_config_path = "/tmp/custom_config.json"
+    with patch('scripts.send_daily_summary.DetectionDBManager') as MockDB,          patch('scripts.send_daily_summary.LineImageNotifier') as MockNotifier,          patch('sys.argv', ["send_daily_summary.py", "--config", custom_config_path]):
+        
+        db_instance = MockDB.return_value
+        db_instance.get_daily_stats.return_value = {"chige": 1}
+        notifier_instance = MockNotifier.return_value
+        notifier_instance.send_message.return_value = True
+
+        main()
+        
+        # LineImageNotifierがカスタム設定パスで初期化されたか確認
+        MockNotifier.assert_called_with(config_path=custom_config_path)

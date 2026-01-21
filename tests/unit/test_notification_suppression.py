@@ -52,8 +52,14 @@ def test_notification_sent_when_no_recent_history(mock_pipeline):
     # 検証: 通知メソッドが呼ばれたか
     mock_pipeline.notifier.send_detection_notification.assert_called_once()
     
-    # 検証: register_detection_with_suppressionが呼ばれたか
-    mock_pipeline.db_manager.register_detection_with_suppression.assert_called_once()
+    # 検証: register_detection_with_suppressionが期待される引数で呼ばれたか
+    mock_pipeline.db_manager.register_detection_with_suppression.assert_called_once_with(
+        class_name="chige",
+        confidence=0.9,
+        image_path="test.jpg",
+        threshold=0.75,  # デフォルト閾値
+        suppression_minutes=5  # デフォルト抑制時間
+    )
     
     # 検証: add_detectionは呼ばれていないこと（registerで代用）
     mock_pipeline.db_manager.add_detection.assert_not_called()
@@ -68,6 +74,15 @@ def test_notification_skipped_when_recent_history_exists(mock_pipeline):
 
     # 実行
     mock_pipeline.process_motion_image("test.jpg")
+
+    # 検証: register_detection_with_suppressionが呼ばれたか確認
+    mock_pipeline.db_manager.register_detection_with_suppression.assert_called_once_with(
+        class_name="chige",
+        confidence=0.9,
+        image_path="test.jpg",
+        threshold=0.75,
+        suppression_minutes=5
+    )
 
     # 検証: 通知メソッドが呼ばれていないこと
     mock_pipeline.notifier.send_detection_notification.assert_not_called()

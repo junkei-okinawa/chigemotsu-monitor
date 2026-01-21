@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Tuple
 
 class DetectionDBManager:
     """検出結果の保存と統計情報の取得を行うデータベースマネージャー"""
@@ -44,6 +44,17 @@ class DetectionDBManager:
             """)
             conn.commit()
 
+    def _get_today_start_utc(self) -> str:
+        """
+        ローカル時間の「今日の開始時刻（00:00）」に対応するUTC時刻文字列を取得する
+        """
+        # 現在のローカル時間から、ローカルの「今日の開始時刻（00:00）」を算出
+        now_local = datetime.now().astimezone()
+        today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # UTCに変換してISOフォーマット文字列として返す
+        return today_start_local.astimezone(timezone.utc).isoformat()
+
     def add_detection(self, class_name: str, confidence: float, image_path: str, is_notified: bool):
         """
         検出結果をデータベースに保存する
@@ -64,7 +75,7 @@ class DetectionDBManager:
             conn.commit()
 
     def register_detection_with_suppression(self, class_name: str, confidence: float, image_path: str,
-                                          threshold: float, suppression_minutes: int) -> tuple[bool, int]:
+                                          threshold: float, suppression_minutes: int) -> Tuple[bool, int]:
         """
         検出を登録し、通知すべきかどうかを判定する（トランザクションによるアトミック操作）
         レースコンディションを防ぐため、判定と登録を同時に行う。
@@ -162,12 +173,8 @@ class DetectionDBManager:
                 - successful_detections: 本日の成功検出数（現在は全検出数と同じ）
                 - notification_sent: 本日の通知送信数
         """
-        # 現在のローカル時間から、ローカルの「今日の開始時刻（00:00）」を算出
-        now_local = datetime.now().astimezone()
-        today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-        
         # UTCに変換して検索クエリに使用
-        today_start_utc = today_start_local.astimezone(timezone.utc).isoformat()
+        today_start_utc = self._get_today_start_utc()
         
         with sqlite3.connect(self.db_path) as conn:
             # 各呼び出しごとにコンテキストマネージャーで接続を開閉する実装とする。
@@ -199,12 +206,8 @@ class DetectionDBManager:
             Dict[str, int]: クラス名をキー、検出数を値とする辞書
                             例: {'chige': 5, 'motsu': 3}
         """
-        # 現在のローカル時間から、ローカルの「今日の開始時刻（00:00）」を算出
-        now_local = datetime.now().astimezone()
-        today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-        
         # UTCに変換して検索クエリに使用
-        today_start_utc = today_start_local.astimezone(timezone.utc).isoformat()
+        today_start_utc = self._get_today_start_utc()
         
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()

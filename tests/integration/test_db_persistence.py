@@ -41,19 +41,10 @@ def test_pipeline_db_integration(integration_env):
     db_path = integration_env["db"]
     
     with patch('scripts.chigemotsu_pipeline.ChigemotsuDetector') as MockDetector, \
-         patch('scripts.chigemotsu_pipeline.LineImageNotifier') as MockNotifier, \
-         patch('scripts.chigemotsu_pipeline.DetectionDBManager') as MockDBManager:
+         patch('scripts.chigemotsu_pipeline.LineImageNotifier') as MockNotifier:
         
-        # モックDBの戻り値を設定（初期化時の統計ロード用）
-        MockDBManager.return_value.get_pipeline_stats_summary.return_value = {
-            "total_processed": 0, "notification_sent": 0
-        }
-        
-        # ログ設定を無効化したサブクラスを使用
-        pipeline = MockPipeline(config_path=config_path)
-        
-        # DBマネージャーをテスト用DBで再初期化して差し替え
-        pipeline.db_manager = DetectionDBManager(db_path=db_path)
+        # ログ設定を無効化したサブクラスを使用し、テスト用DBパスを渡す
+        pipeline = MockPipeline(config_path=config_path, db_path=db_path)
         
         # モックの設定
         pipeline.detector.process_image.return_value = {

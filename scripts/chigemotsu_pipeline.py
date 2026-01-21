@@ -33,12 +33,13 @@ except ImportError as e:
 class ChigemotsuPipeline:
     """ちげもつ判別・LINE通知パイプライン"""
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: Optional[str] = None, db_path: Optional[str] = None):
         """
         初期化
 
         Args:
             config_path: 設定ファイルのパス（デフォルト: config/config.json）
+            db_path: データベースパス（テスト用、デフォルト: logs/detection.db）
         """
         if config_path is None:
             config_path = project_root / "config" / "config.json"
@@ -63,7 +64,11 @@ class ChigemotsuPipeline:
         try:
             self.detector = ChigemotsuDetector(config_path=config_path)
             self.notifier = LineImageNotifier(config_path=config_path)
-            self.db_manager = DetectionDBManager(db_path=str(project_root / "logs" / "detection.db"))
+            
+            # DBパスの設定
+            if db_path is None:
+                db_path = str(project_root / "logs" / "detection.db")
+            self.db_manager = DetectionDBManager(db_path=db_path)
         except Exception as e:
             self.logger.error(f"コンポーネントの初期化に失敗: {e}")
             raise
@@ -142,17 +147,20 @@ class ChigemotsuPipeline:
             
             # Step 4: 通知ロジック
             if notification_enabled and class_name in ["chige", "motsu"]:
+                # 通知抑制時間を設定から取得（デフォルト5分）
+                suppression_minutes = self.config.get("line", {}).get("suppression_minutes", 5)
+
                 # 直近の検出を確認し、重複抑制または通知予約を行う（アトミック操作）
                 should_notify, record_id = self.db_manager.register_detection_with_suppression(
                     class_name=class_name,
                     confidence=confidence,
                     image_path=image_path,
                     threshold=confidence_threshold,
-                    suppression_minutes=5
+                    suppression_minutes=suppression_minutes
                 )
 
                 if not should_notify:
-                    self.logger.info(f"直近5分以内に {class_name} の高信頼度検出があるため、通知をスキップします")
+                    self.logger.info(f"直近{suppression_minutes}分以内に {class_name} の高信頼度検出があるため、通知をスキップします")
                     return True
 
                 self.logger.info("Step 4: LINE通知を送信中...")

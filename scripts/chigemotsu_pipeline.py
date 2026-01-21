@@ -142,10 +142,17 @@ class ChigemotsuPipeline:
             
             # Step 4: 通知ロジック
             if notification_enabled and class_name in ["chige", "motsu"]:
-                # 直近の検出を確認（重複抑制：過去5分間に閾値以上の検出があるか）
-                if self.db_manager.get_recent_high_confidence_detection(class_name, confidence_threshold, minutes=5):
+                # 直近の検出を確認し、重複抑制または通知予約を行う（アトミック操作）
+                should_notify, record_id = self.db_manager.register_detection_with_suppression(
+                    class_name=class_name,
+                    confidence=confidence,
+                    image_path=image_path,
+                    threshold=confidence_threshold,
+                    suppression_minutes=5
+                )
+
+                if not should_notify:
                     self.logger.info(f"直近5分以内に {class_name} の高信頼度検出があるため、通知をスキップします")
-                    self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
                     return True
 
                 self.logger.info("Step 4: LINE通知を送信中...")
@@ -166,18 +173,21 @@ class ChigemotsuPipeline:
 
                 if notification_success:
                     self.pipeline_stats["notification_sent"] += 1
-                    is_notified = True
                     self.logger.info("LINE通知の送信に成功しました")
+                    # DBは既に is_notified=1 で登録済み
                 else:
                     self.logger.error("LINE通知の送信に失敗しました")
+                    # 送信失敗時はステータスを更新
+                    self.db_manager.update_notification_status(record_id, False)
             
-            elif not notification_enabled:
-                self.logger.info("LINE通知が無効になっています")
             else:
-                self.logger.info(f"検出されたクラスは通知対象外: {class_name}")
+                if not notification_enabled:
+                    self.logger.info("LINE通知が無効になっています")
+                else:
+                    self.logger.info(f"検出されたクラスは通知対象外: {class_name}")
 
-            # DBに保存
-            self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
+                # DBに保存
+                self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
 
             # 処理時間をログ出力
             total_time = time.time() - start_time

@@ -63,6 +63,66 @@ class DetectionDBManager:
             """, (timestamp, class_name, confidence, image_path, is_notified))
             conn.commit()
 
+    def register_detection_with_suppression(self, class_name: str, confidence: float, image_path: str,
+                                          threshold: float, suppression_minutes: int) -> tuple[bool, int]:
+        """
+        検出を登録し、通知すべきかどうかを判定する（トランザクションによるアトミック操作）
+        レースコンディションを防ぐため、判定と登録を同時に行う。
+        
+        Args:
+            class_name: クラス名
+            confidence: 信頼度
+            image_path: 画像パス
+            threshold: 信頼度閾値
+            suppression_minutes: 重複抑制時間（分）
+
+        Returns:
+            (should_notify, record_id): 通知すべきかどうかのフラグと、挿入されたレコードID
+        """
+        timestamp = datetime.now(timezone.utc).isoformat()
+        threshold_time = (datetime.now(timezone.utc) - timedelta(minutes=suppression_minutes)).isoformat()
+        
+        # isolation_level=Noneで自動トランザクションを無効化し、手動制御する
+        with sqlite3.connect(self.db_path, isolation_level=None) as conn:
+            try:
+                # 書き込みロックを取得してトランザクション開始
+                conn.execute("BEGIN IMMEDIATE")
+                cursor = conn.cursor()
+                
+                # 直近の検出を確認
+                cursor.execute("""
+                    SELECT 1 FROM detections
+                    WHERE class_name = ? AND confidence >= ? AND timestamp > ?
+                    LIMIT 1
+                """, (class_name, threshold, threshold_time))
+                
+                exists = cursor.fetchone() is not None
+                
+                # 検出済みなら通知しない(False)、未検出なら通知する(True)
+                should_notify = not exists
+                
+                # 通知予定なら1(True)、そうでなければ0(False)でレコード作成
+                # 通知予定として登録することで、他プロセスからの重複通知をブロックする
+                is_notified_val = 1 if should_notify else 0
+                
+                cursor.execute("""
+                    INSERT INTO detections (timestamp, class_name, confidence, image_path, is_notified)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (timestamp, class_name, confidence, image_path, is_notified_val))
+                
+                record_id = cursor.lastrowid
+                conn.commit()
+                return should_notify, record_id
+            except Exception:
+                conn.rollback()
+                raise
+
+    def update_notification_status(self, record_id: int, is_notified: bool):
+        """通知ステータスを更新する（送信失敗時のロールバック用など）"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("UPDATE detections SET is_notified = ? WHERE id = ?", (1 if is_notified else 0, record_id))
+            conn.commit()
+
     def get_recent_high_confidence_detection(self, class_name: str, threshold: float, minutes: int = 5) -> bool:
         """
         指定された時間内に同じクラスで、かつ閾値以上の信頼度の検出があったかを確認する
@@ -99,6 +159,7 @@ class DetectionDBManager:
         Returns:
             Dict[str, int]:
                 - total_processed: 本日の全検出数
+                - successful_detections: 本日の成功検出数（現在は全検出数と同じ）
                 - notification_sent: 本日の通知送信数
         """
         # 現在のローカル時間から、ローカルの「今日の開始時刻（00:00）」を算出
@@ -109,8 +170,7 @@ class DetectionDBManager:
         today_start_utc = today_start_local.astimezone(timezone.utc).isoformat()
         
         with sqlite3.connect(self.db_path) as conn:
-            # Note: SQLiteの接続コストは比較的小さいが、極めて高頻度なアクセスが発生する場合は
-            # Connection poolingや接続の維持を検討すること。現状は堅牢性を重視しメソッド単位で接続する。
+            # 各呼び出しごとにコンテキストマネージャーで接続を開閉する実装とする。
             cursor = conn.cursor()
             
             # 全処理数（本日のレコード数）
@@ -123,6 +183,7 @@ class DetectionDBManager:
             
             return {
                 "total_processed": total_processed,
+                "successful_detections": total_processed,
                 "notification_sent": notification_sent
             }
 

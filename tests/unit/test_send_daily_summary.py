@@ -1,4 +1,6 @@
-from unittest.mock import patch
+import pytest
+import sqlite3
+from unittest.mock import patch, MagicMock
 import sys
 from pathlib import Path
 
@@ -57,3 +59,34 @@ def test_send_daily_summary_empty():
         
         assert "三毛猫（ちげ）: 0回" in message
         assert "合計検出数: 0回" in message
+
+def test_send_daily_summary_db_error():
+    """DBエラー時のテスト"""
+    with patch('scripts.send_daily_summary.DetectionDBManager') as MockDB, \
+         patch('scripts.send_daily_summary.LineImageNotifier') as MockNotifier, \
+         patch('sys.argv', ["send_daily_summary.py"]):
+        
+        # DB初期化でエラー発生
+        MockDB.side_effect = sqlite3.Error("DB Connection Failed")
+        
+        # SystemExit(1)が発生することを確認
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == 1
+
+def test_send_daily_summary_send_failure():
+    """LINE送信失敗時のテスト"""
+    with patch('scripts.send_daily_summary.DetectionDBManager') as MockDB, \
+         patch('scripts.send_daily_summary.LineImageNotifier') as MockNotifier, \
+         patch('sys.argv', ["send_daily_summary.py"]):
+        
+        db_instance = MockDB.return_value
+        db_instance.get_daily_stats.return_value = {"chige": 1}
+        
+        notifier_instance = MockNotifier.return_value
+        notifier_instance.send_message.return_value = False  # 送信失敗
+        
+        # SystemExit(1)が発生することを確認
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == 1

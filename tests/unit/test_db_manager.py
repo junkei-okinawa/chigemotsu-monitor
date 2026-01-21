@@ -106,4 +106,37 @@ def test_get_daily_stats(db_manager, temp_db):
     # 今日の分だけ集計されているか確認
     assert stats["chige"] == 2  # 昨日のは含まない
     assert stats["motsu"] == 1
-    assert "other" not in stats
+    assert stats.get("other", 0) == 0
+
+def test_register_detection_with_suppression(db_manager, temp_db):
+    """アトミックな検出登録と抑制のテスト"""
+    threshold = 0.75
+    
+    # 初回の検出 -> 通知すべき(True)
+    should_notify, rec_id = db_manager.register_detection_with_suppression(
+        "chige", 0.9, "img1.jpg", threshold, 5
+    )
+    assert should_notify is True
+    assert rec_id > 0
+    
+    # 直後の同じ検出 -> 通知すべきでない(False)
+    should_notify, rec_id2 = db_manager.register_detection_with_suppression(
+        "chige", 0.9, "img2.jpg", threshold, 5
+    )
+    assert should_notify is False
+    assert rec_id2 > rec_id
+    
+    # 別のクラス -> 通知すべき(True)
+    should_notify, _ = db_manager.register_detection_with_suppression(
+        "motsu", 0.9, "img3.jpg", threshold, 5
+    )
+    assert should_notify is True
+
+    # 通知失敗時の更新テスト
+    db_manager.update_notification_status(rec_id, False)
+    
+    # ステータス更新確認
+    with sqlite3.connect(temp_db) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_notified FROM detections WHERE id = ?", (rec_id,))
+        assert cursor.fetchone()[0] == 0

@@ -38,11 +38,12 @@ def mock_pipeline():
 
 def test_notification_sent_when_no_recent_history(mock_pipeline):
     """直近の通知がない場合、通知が送信されること"""
-    # 設定: 検出成功(chige, 0.9)、直近通知なし
+    # 設定: 検出成功(chige, 0.9)、直近通知なし -> should_notify=True
     mock_pipeline.detector.process_image.return_value = {
         "class_name": "chige", "confidence": 0.9, "box": []
     }
-    mock_pipeline.db_manager.get_recent_high_confidence_detection.return_value = False
+    # (should_notify, record_id)
+    mock_pipeline.db_manager.register_detection_with_suppression.return_value = (True, 123)
     mock_pipeline.notifier.send_detection_notification.return_value = True
 
     # 実行
@@ -50,24 +51,29 @@ def test_notification_sent_when_no_recent_history(mock_pipeline):
 
     # 検証: 通知メソッドが呼ばれたか
     mock_pipeline.notifier.send_detection_notification.assert_called_once()
-    # 検証: DBに通知済み(True)として保存されたか
-    mock_pipeline.db_manager.add_detection.assert_called_with("chige", 0.9, "test.jpg", True)
+    
+    # 検証: register_detection_with_suppressionが呼ばれたか
+    mock_pipeline.db_manager.register_detection_with_suppression.assert_called_once()
+    
+    # 検証: add_detectionは呼ばれていないこと（registerで代用）
+    mock_pipeline.db_manager.add_detection.assert_not_called()
 
 def test_notification_skipped_when_recent_history_exists(mock_pipeline):
     """直近の通知がある場合、通知がスキップされること"""
-    # 設定: 検出成功(chige, 0.9)、直近通知あり(True)
+    # 設定: 検出成功(chige, 0.9)、直近通知あり -> should_notify=False
     mock_pipeline.detector.process_image.return_value = {
         "class_name": "chige", "confidence": 0.9, "box": []
     }
-    mock_pipeline.db_manager.get_recent_high_confidence_detection.return_value = True
+    mock_pipeline.db_manager.register_detection_with_suppression.return_value = (False, 123)
 
     # 実行
     mock_pipeline.process_motion_image("test.jpg")
 
     # 検証: 通知メソッドが呼ばれていないこと
     mock_pipeline.notifier.send_detection_notification.assert_not_called()
-    # 検証: DBに未通知(False)として保存されたか（ログ目的）
-    mock_pipeline.db_manager.add_detection.assert_called_with("chige", 0.9, "test.jpg", False)
+    
+    # 検証: add_detectionは呼ばれていないこと
+    mock_pipeline.db_manager.add_detection.assert_not_called()
 
 def test_notification_skipped_low_confidence(mock_pipeline):
     """信頼度が低い場合、通知がスキップされ、DBには未通知として記録されること"""

@@ -22,7 +22,7 @@ def mock_pipeline():
             
             # 統計ロードのモック
             MockDB.return_value.get_pipeline_stats_summary.return_value = {
-                "total_processed": 0, "notification_sent": 0
+                "total_processed": 0, "notification_sent": 0, "successful_detections": 0
             }
             
             pipeline = ChigemotsuPipeline(config_path=str(config_path))

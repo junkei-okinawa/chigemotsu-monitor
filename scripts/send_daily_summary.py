@@ -38,6 +38,8 @@ try:
     from db_manager import DetectionDBManager
 except ImportError as e:
     # インポートエラーは記録するが、テストコレクションを妨げないようここでは終了しない
+    logger.error(f"モジュールのインポートに失敗しました: {e}")
+    logger.debug("ImportError の詳細", exc_info=True)
     LineImageNotifier = None
     DetectionDBManager = None
     import_error = e
@@ -47,7 +49,7 @@ def main():
     parser.add_argument("--config", "-c", help="設定ファイルのパス")
     args = parser.parse_args()
 
-    config_path = args.config if args.config else project_root / "config" / "config.json"
+    config_path = str(args.config) if args.config else str(project_root / "config" / "config.json")
 
     try:
         # コンポーネント初期化

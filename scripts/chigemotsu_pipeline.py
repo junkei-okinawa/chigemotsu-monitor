@@ -25,7 +25,8 @@ try:
     from line_image_notifier import LineImageNotifier
     from db_manager import DetectionDBManager
 except ImportError as e:
-    print(f"❌ 必要なモジュールがインポートできません: {e}")
+    missing_module = getattr(e, "name", None) or str(e)
+    print(f"❌ 必要なモジュール '{missing_module}' がインポートできません: {e}")
     print("scripts/ディレクトリに integrated_detection.py, line_image_notifier.py, db_manager.py があることを確認してください")
     sys.exit(1)
 
@@ -39,7 +40,7 @@ class ChigemotsuPipeline:
 
         Args:
             config_path: 設定ファイルのパス（デフォルト: config/config.json）
-            db_path: データベースパス（テスト用、デフォルト: logs/detection.db）
+            db_path: データベースパス（デフォルト: logs/detection.db。テストや本番でデフォルト以外のパスを使いたい場合に指定）
         """
         if config_path is None:
             config_path = project_root / "config" / "config.json"
@@ -77,7 +78,7 @@ class ChigemotsuPipeline:
         db_stats = self.db_manager.get_pipeline_stats_summary()
         self.pipeline_stats = {
             "total_processed": db_stats["total_processed"],
-            "successful_detections": db_stats.get("successful_detections", db_stats["total_processed"]),  # DBに値がなければ全レコード数で初期化
+            "successful_detections": db_stats["successful_detections"],  # DBの集計値をそのまま使用（現状は total_processed と同一）
             "notification_sent": db_stats["notification_sent"],
             "start_time": datetime.now(),
         }

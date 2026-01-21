@@ -122,11 +122,12 @@ class DetectionDBManager:
                 """, (timestamp, class_name, confidence, image_path, is_notified_val))
                 
                 record_id = cursor.lastrowid
-                conn.commit()
                 return should_notify, record_id
             except Exception:
                 conn.rollback()
                 raise
+            else:
+                conn.commit()
 
     def update_notification_status(self, record_id: int, is_notified: bool):
         """通知ステータスを更新する（送信失敗時のロールバック用など）"""
@@ -177,16 +178,19 @@ class DetectionDBManager:
         today_start_utc = self._get_today_start_utc()
         
         with sqlite3.connect(self.db_path) as conn:
-            # 各呼び出しごとにコンテキストマネージャーで接続を開閉する実装とする。
+            # 本メソッドは頻繁に呼び出されないため、毎回短命な接続を確立してクリーンにクローズする方針とする。
             cursor = conn.cursor()
             
-            # 全処理数（本日のレコード数）
-            cursor.execute("SELECT COUNT(*) FROM detections WHERE timestamp >= ?", (today_start_utc,))
-            total_processed = cursor.fetchone()[0]
+            # 全処理数と通知送信数を1つのクエリで取得
+            cursor.execute("""
+                SELECT COUNT(*), SUM(CASE WHEN is_notified = 1 THEN 1 ELSE 0 END)
+                FROM detections 
+                WHERE timestamp >= ?
+            """, (today_start_utc,))
             
-            # 通知送信数
-            cursor.execute("SELECT COUNT(*) FROM detections WHERE timestamp >= ? AND is_notified = 1", (today_start_utc,))
-            notification_sent = cursor.fetchone()[0]
+            row = cursor.fetchone()
+            total_processed = row[0]
+            notification_sent = row[1] if row[1] is not None else 0
             
             return {
                 "total_processed": total_processed,

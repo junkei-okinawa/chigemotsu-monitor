@@ -94,7 +94,9 @@ def test_send_daily_summary_send_failure():
 def test_send_daily_summary_with_config_arg():
     """--config引数が正しくパースされるかのテスト"""
     custom_config_path = "/tmp/custom_config.json"
-    with patch('scripts.send_daily_summary.DetectionDBManager') as MockDB,          patch('scripts.send_daily_summary.LineImageNotifier') as MockNotifier,          patch('sys.argv', ["send_daily_summary.py", "--config", custom_config_path]):
+    with patch('scripts.send_daily_summary.DetectionDBManager') as MockDB, \
+         patch('scripts.send_daily_summary.LineImageNotifier') as MockNotifier, \
+         patch('sys.argv', ["send_daily_summary.py", "--config", custom_config_path]):
         
         db_instance = MockDB.return_value
         db_instance.get_daily_stats.return_value = {"chige": 1}

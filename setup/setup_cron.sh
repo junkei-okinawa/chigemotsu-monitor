@@ -14,7 +14,7 @@ fi
 
 echo "=== Cron自動タスク設定 ==="
 echo "以下のタスクをcrontabに追加します:"
-echo "1. 毎日 23:45 - 日次サマリー通知"
+echo "1. 毎日 23:55 - 日次サマリー通知"
 echo "2. 毎日 23:59 - システムリブート"
 
 # ログディレクトリを作成（Cron実行時に存在しないとエラーになるため）
@@ -54,10 +54,10 @@ if [ -s "$BACKUP_FILE" ]; then
         rm -f "$BACKUP_FILE"
         exit 1
     }
-    trap 'rm -f "$tmpfile" "$BACKUP_FILE"' EXIT
-    sed -e '/send_daily_summary.py/d' -e '/sudo reboot/d' "$BACKUP_FILE" > "$tmpfile"
+    trap 'rm -f "$tmpfile" "$BACKUP_FILE"' EXIT INT TERM
+    sed -e '/send_daily_summary.py/d' -e '/sudo .*reboot/d' "$BACKUP_FILE" > "$tmpfile"
     mv "$tmpfile" "$BACKUP_FILE"
-    trap - EXIT
+    trap - EXIT INT TERM
 fi
 
 # 設定ファイルの存在確認
@@ -69,9 +69,9 @@ fi
 
 # 新しい設定を追加
 # パスにスペースが含まれる可能性を考慮してクォートする
-# サマリー通知はリブート(23:59)の十分前(23:45)に実行する
-echo "45 23 * * * \"${PYTHON_EXEC}\" \"${SCRIPTS_DIR}/send_daily_summary.py\" --config \"${CONFIG_PATH}\" >> \"${BASE_DIR}/logs/cron_summary.log\" 2>&1" >> "$BACKUP_FILE"
-echo "59 23 * * * sudo reboot" >> "$BACKUP_FILE"
+# サマリー通知はリブート(23:59)の十分前(23:55)に実行する
+echo "55 23 * * * \"${PYTHON_EXEC}\" \"${SCRIPTS_DIR}/send_daily_summary.py\" --config \"${CONFIG_PATH}\" >> \"${BASE_DIR}/logs/cron_summary.log\" 2>&1" >> "$BACKUP_FILE"
+echo "59 23 * * * sudo /sbin/reboot" >> "$BACKUP_FILE"
 
 # 新しいcrontabを適用
 crontab "$BACKUP_FILE"

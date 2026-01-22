@@ -23,21 +23,24 @@ sys.path.append(str(script_dir))
 try:
     from integrated_detection import ChigemotsuDetector
     from line_image_notifier import LineImageNotifier
+    from db_manager import DetectionDBManager
 except ImportError as e:
-    print(f"❌ 必要なモジュールがインポートできません: {e}")
-    print("scripts/ディレクトリに integrated_detection.py と line_image_notifier.py があることを確認してください")
+    missing_module = getattr(e, "name", None) or str(e)
+    logging.error("❌ 必要なモジュール '%s' がインポートできません: %s", missing_module, e)
+    logging.error("scripts/ディレクトリに integrated_detection.py, line_image_notifier.py, db_manager.py があることを確認してください")
     sys.exit(1)
 
 
 class ChigemotsuPipeline:
     """ちげもつ判別・LINE通知パイプライン"""
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: Optional[str] = None, db_path: Optional[str] = None):
         """
         初期化
 
         Args:
             config_path: 設定ファイルのパス（デフォルト: config/config.json）
+            db_path: データベースパス（デフォルト: logs/detection.db。テストや本番でデフォルト以外のパスを使いたい場合に指定）
         """
         if config_path is None:
             config_path = project_root / "config" / "config.json"
@@ -62,19 +65,20 @@ class ChigemotsuPipeline:
         try:
             self.detector = ChigemotsuDetector(config_path=config_path)
             self.notifier = LineImageNotifier(config_path=config_path)
+            
+            # DBパスの設定
+            if db_path is None:
+                db_path = str(project_root / "logs" / "detection.db")
+            self.db_manager = DetectionDBManager(db_path=db_path)
         except Exception as e:
             self.logger.error(f"コンポーネントの初期化に失敗: {e}")
             raise
 
-        # 統計情報
-        self.pipeline_stats = {
-            "total_processed": 0,
-            "successful_detections": 0,
-            "notification_sent": 0,
-            "start_time": datetime.now(),
-        }
+        # 統計情報をDBからロード（初期表示用）
+        db_stats = self.db_manager.get_pipeline_stats_summary()
+        self.pipeline_start_time = datetime.now()
 
-        self.logger.info("ちげもつパイプラインが初期化されました")
+        self.logger.info(f"ちげもつパイプラインが初期化されました (本日の既処理数: {db_stats['total_processed']})")
 
     def _setup_logging(self):
         """ログ設定"""
@@ -106,9 +110,6 @@ class ChigemotsuPipeline:
             self.logger.info(f"パイプライン処理を開始: {image_path}")
             start_time = time.time()
 
-            # 統計情報を更新
-            self.pipeline_stats["total_processed"] += 1
-
             # Step 1: 推論実行
             self.logger.info("Step 1: ちげもつ判別を実行中...")
             detection_result = self.detector.process_image(image_path)
@@ -117,8 +118,6 @@ class ChigemotsuPipeline:
                 self.logger.error("推論処理に失敗しました")
                 return False
 
-            self.pipeline_stats["successful_detections"] += 1
-            
             # Step 2: 信頼度チェック
             confidence_threshold = self.config.get("model", {}).get("threshold", 0.75)
             confidence = detection_result["confidence"]
@@ -126,28 +125,42 @@ class ChigemotsuPipeline:
             
             self.logger.info(f"推論結果: {class_name} (信頼度: {confidence:.3f})")
 
+            is_notified = False
+
             if confidence < confidence_threshold:
                 self.logger.info(f"信頼度が閾値未満のため通知をスキップ: {confidence:.3f} < {confidence_threshold}")
+                # 通知対象外でもDBには記録する（通知フラグFalse）
+                self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
                 return True  # 処理としては成功
 
             # Step 3: LINE通知設定の確認
             notification_enabled = self.config.get("line", {}).get("notification_enabled", True)
-            if not notification_enabled:
-                self.logger.info("LINE通知が無効になっています")
-                return True
+            
+            # Step 4: 通知ロジック
+            if notification_enabled and class_name in ["chige", "motsu"]:
+                # 通知抑制時間を設定から取得（デフォルト5分）
+                suppression_minutes = self.config.get("line", {}).get("suppression_minutes", 5)
 
-            # Step 4: LINE通知送信
-            self.logger.info("Step 2: LINE通知を送信中...")
+                # 直近の検出を確認し、重複抑制または通知予約を行う（アトミック操作）
+                should_notify, record_id = self.db_manager.register_detection_with_suppression(
+                    class_name=class_name,
+                    confidence=confidence,
+                    image_path=image_path,
+                    threshold=confidence_threshold,
+                    suppression_minutes=suppression_minutes
+                )
 
-            if class_name in ["chige", "motsu"]:
+                if not should_notify:
+                    self.logger.info(f"直近{suppression_minutes}分以内に {class_name} の高信頼度検出があるため、通知をスキップします")
+                    return True
+
+                self.logger.info("Step 4: LINE通知を送信中...")
+                
                 # 信頼度をパーセント表示に変換
                 confidence_percent = confidence * 100
                 
                 # クラス名を日本語に変換
-                if class_name == "chige":
-                    japanese_class_name = "三毛猫（ちげ）"
-                elif class_name == "motsu":
-                    japanese_class_name = "白黒猫（もつ）"
+                japanese_class_name = "三毛猫（ちげ）" if class_name == "chige" else "白黒猫（もつ）"
 
                 # LINE通知送信
                 notification_success = self.notifier.send_detection_notification(
@@ -158,20 +171,27 @@ class ChigemotsuPipeline:
                 )
 
                 if notification_success:
-                    self.pipeline_stats["notification_sent"] += 1
                     self.logger.info("LINE通知の送信に成功しました")
+                    # DBは既に is_notified=1 で登録済み
                 else:
                     self.logger.error("LINE通知の送信に失敗しました")
-                    # 通知失敗でもパイプライン全体は成功とする
-                    
-                # 処理時間をログ出力
-                total_time = time.time() - start_time
-                self.logger.info(f"パイプライン処理完了 (総処理時間: {total_time:.3f}秒)")
-
-                return True
+                    # 送信失敗時はステータスを更新
+                    self.db_manager.update_notification_status(record_id, False)
+            
             else:
-                self.logger.info(f"検出されたクラスは通知対象外: {class_name}")
-                return True
+                if not notification_enabled:
+                    self.logger.info("LINE通知が無効になっています")
+                else:
+                    self.logger.info(f"検出されたクラスは通知対象外: {class_name}")
+
+                # DBに保存
+                self.db_manager.add_detection(class_name, confidence, image_path, is_notified)
+
+            # 処理時間をログ出力
+            total_time = time.time() - start_time
+            self.logger.info(f"パイプライン処理完了 (総処理時間: {total_time:.3f}秒)")
+
+            return True
 
         except Exception as e:
             self.logger.error(f"パイプライン処理中にエラー: {e}")
@@ -276,14 +296,15 @@ class ChigemotsuPipeline:
 
     def get_pipeline_stats(self) -> Dict[str, Any]:
         """パイプライン統計情報を取得"""
-        runtime = datetime.now() - self.pipeline_stats["start_time"]
+        db_stats = self.db_manager.get_pipeline_stats_summary()
+        runtime = datetime.now() - self.pipeline_start_time
 
         return {
             "runtime_hours": runtime.total_seconds() / 3600,
-            "total_processed": self.pipeline_stats["total_processed"],
-            "successful_detections": self.pipeline_stats["successful_detections"],
-            "notification_sent": self.pipeline_stats["notification_sent"],
-            "start_time": self.pipeline_stats["start_time"].isoformat(),
+            "total_processed": db_stats["total_processed"],
+            "successful_detections": db_stats["successful_detections"],
+            "notification_sent": db_stats["notification_sent"],
+            "start_time": self.pipeline_start_time.isoformat(),
         }
 
 

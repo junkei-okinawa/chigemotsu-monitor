@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""
+日次サマリー通知スクリプト
+DBから当日の検出数を集計し、LINEに通知する
+"""
+
+import sys
+import argparse
+import traceback
+import sqlite3
+import logging
+from datetime import datetime
+from pathlib import Path
+
+# プロジェクトパスを追加
+script_dir = Path(__file__).parent
+project_root = script_dir.parent
+sys.path.append(str(project_root))
+sys.path.append(str(script_dir))
+
+# ログ設定
+log_dir = project_root / "logs"
+log_dir.mkdir(exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_dir / "daily_summary.log"),
+        logging.StreamHandler(),
+    ],
+)
+logger = logging.getLogger(__name__)
+
+import_error = None
+try:
+    from line_image_notifier import LineImageNotifier
+    from db_manager import DetectionDBManager
+except ImportError as e:
+    # インポートエラーは記録するが、テストコレクションを妨げないようここでは終了しない
+    logger.error(f"モジュールのインポートに失敗しました: {e}")
+    logger.debug("ImportError の詳細", exc_info=True)
+    LineImageNotifier = None
+    DetectionDBManager = None
+    import_error = e
+
+def main():
+    parser = argparse.ArgumentParser(description="日次サマリー通知スクリプト")
+    parser.add_argument("--config", "-c", help="設定ファイルのパス")
+    args = parser.parse_args()
+
+    config_path = str(args.config) if args.config else str(project_root / "config" / "config.json")
+
+    try:
+        # コンポーネント初期化
+        db_path = project_root / "logs" / "detection.db"
+        db_manager = DetectionDBManager(db_path=str(db_path))
+        notifier = LineImageNotifier(config_path=config_path)
+
+        # 今日の統計取得
+        stats = db_manager.get_daily_stats()
+        
+        # 0件の場合は0を設定
+        chige_count = stats.get("chige", 0)
+        motsu_count = stats.get("motsu", 0)
+        other_count = stats.get("other", 0)
+        total_count = sum(stats.values())
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # メッセージ作成
+        message = (
+            "📊 本日の検出サマリー\n"
+            f"📅 {timestamp}\n\n"
+            f"🐈 三毛猫（ちげ）: {chige_count}回\n"
+            f"🐈‍⬛ 白黒猫（もつ）: {motsu_count}回\n"
+            f"❓ その他: {other_count}回\n"
+            f"📈 合計検出数: {total_count}回\n\n"
+            "本日の監視を終了します。おやすみなさい💤"
+        )
+
+        # 送信
+        logger.info("日次サマリーを送信中...")
+        if notifier.send_message(message):
+            logger.info("✅ 日次サマリーの送信に成功しました")
+        else:
+            logger.error("❌ 日次サマリーの送信に失敗しました")
+            sys.exit(1)
+
+    except (sqlite3.Error, FileNotFoundError, ValueError) as e:
+        logger.error(f"エラーが発生しました: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"予期せぬエラーが発生しました: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+
+if __name__ == "__main__":
+    if LineImageNotifier is None or DetectionDBManager is None:
+        logger.error(f"必要なモジュールがインポートされていないため実行できません: {import_error}")
+        sys.exit(1)
+    main()

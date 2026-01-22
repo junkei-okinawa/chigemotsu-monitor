@@ -1,0 +1,122 @@
+import pytest
+from unittest.mock import patch
+from pathlib import Path
+from scripts.chigemotsu_pipeline import ChigemotsuPipeline
+
+import tempfile
+import shutil
+
+@pytest.fixture
+def mock_pipeline():
+    """モック化されたパイプラインフィクスチャ"""
+    tmp_dir = tempfile.mkdtemp()
+    config_path = Path(tmp_dir) / "config.json"
+    import json
+    with open(config_path, 'w') as f:
+        json.dump({"line": {"notification_enabled": True}}, f)
+
+    try:
+        with patch('scripts.chigemotsu_pipeline.ChigemotsuDetector') as MockDetector, \
+             patch('scripts.chigemotsu_pipeline.LineImageNotifier') as MockNotifier, \
+             patch('scripts.chigemotsu_pipeline.DetectionDBManager') as MockDB:
+            
+            # 統計ロードのモック
+            MockDB.return_value.get_pipeline_stats_summary.return_value = {
+                "total_processed": 0, "notification_sent": 0, "successful_detections": 0
+            }
+            
+            pipeline = ChigemotsuPipeline(config_path=str(config_path))
+            
+            # 各コンポーネントのモックを取得
+            pipeline.detector = MockDetector.return_value
+            pipeline.notifier = MockNotifier.return_value
+            pipeline.db_manager = MockDB.return_value
+            
+            yield pipeline
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+def test_notification_sent_when_no_recent_history(mock_pipeline):
+    """直近の通知がない場合、通知が送信されること"""
+    # 設定: 検出成功(chige, 0.9)、直近通知なし -> should_notify=True
+    mock_pipeline.detector.process_image.return_value = {
+        "class_name": "chige", "confidence": 0.9, "box": []
+    }
+    # (should_notify, record_id)
+    mock_pipeline.db_manager.register_detection_with_suppression.return_value = (True, 123)
+    mock_pipeline.notifier.send_detection_notification.return_value = True
+
+    # 実行
+    mock_pipeline.process_motion_image("test.jpg")
+
+    # 検証: 通知メソッドが呼ばれたか
+    mock_pipeline.notifier.send_detection_notification.assert_called_once()
+    
+    # 検証: register_detection_with_suppressionが期待される引数で呼ばれたか
+    mock_pipeline.db_manager.register_detection_with_suppression.assert_called_once_with(
+        class_name="chige",
+        confidence=0.9,
+        image_path="test.jpg",
+        threshold=0.75,  # デフォルト閾値
+        suppression_minutes=5  # デフォルト抑制時間
+    )
+    
+    # 検証: add_detectionは呼ばれていないこと（registerで代用）
+    mock_pipeline.db_manager.add_detection.assert_not_called()
+
+def test_notification_skipped_when_recent_history_exists(mock_pipeline):
+    """直近の通知がある場合、通知がスキップされること"""
+    # 設定: 検出成功(chige, 0.9)、直近通知あり -> should_notify=False
+    mock_pipeline.detector.process_image.return_value = {
+        "class_name": "chige", "confidence": 0.9, "box": []
+    }
+    mock_pipeline.db_manager.register_detection_with_suppression.return_value = (False, 123)
+
+    # 実行
+    mock_pipeline.process_motion_image("test.jpg")
+
+    # 検証: register_detection_with_suppressionが呼ばれたか確認
+    mock_pipeline.db_manager.register_detection_with_suppression.assert_called_once_with(
+        class_name="chige",
+        confidence=0.9,
+        image_path="test.jpg",
+        threshold=0.75,
+        suppression_minutes=5
+    )
+
+    # 検証: 通知メソッドが呼ばれていないこと
+    mock_pipeline.notifier.send_detection_notification.assert_not_called()
+    
+    # 検証: add_detectionは呼ばれていないこと
+    mock_pipeline.db_manager.add_detection.assert_not_called()
+
+def test_notification_skipped_low_confidence(mock_pipeline):
+    """信頼度が低い場合、通知がスキップされ、DBには未通知として記録されること"""
+    # 設定: 検出成功だが信頼度低い(0.5)
+    mock_pipeline.detector.process_image.return_value = {
+        "class_name": "chige", "confidence": 0.5, "box": []
+    }
+    # configの閾値はデフォルト0.75
+
+    # 実行
+    mock_pipeline.process_motion_image("test.jpg")
+
+    # 検証: 通知なし
+    mock_pipeline.notifier.send_detection_notification.assert_not_called()
+    # 検証: DBに未通知(False)として保存
+    mock_pipeline.db_manager.add_detection.assert_called_with("chige", 0.5, "test.jpg", False)
+
+def test_notification_skipped_for_other_class(mock_pipeline):
+    """その他のクラス(other)が検出された場合、通知がスキップされ、DBに記録されること"""
+    # 設定: 検出成功(other, 0.9)
+    mock_pipeline.detector.process_image.return_value = {
+        "class_name": "other", "confidence": 0.9, "box": []
+    }
+    
+    # 実行
+    mock_pipeline.process_motion_image("test.jpg")
+    
+    # 検証: 通知なし
+    mock_pipeline.notifier.send_detection_notification.assert_not_called()
+    # 検証: DBに未通知(False)として保存
+    mock_pipeline.db_manager.add_detection.assert_called_with("other", 0.9, "test.jpg", False)

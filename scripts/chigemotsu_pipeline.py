@@ -26,8 +26,8 @@ try:
     from db_manager import DetectionDBManager
 except ImportError as e:
     missing_module = getattr(e, "name", None) or str(e)
-    print(f"❌ 必要なモジュール '{missing_module}' がインポートできません: {e}")
-    print("scripts/ディレクトリに integrated_detection.py, line_image_notifier.py, db_manager.py があることを確認してください")
+    logging.error("❌ 必要なモジュール '%s' がインポートできません: %s", missing_module, e)
+    logging.error("scripts/ディレクトリに integrated_detection.py, line_image_notifier.py, db_manager.py があることを確認してください")
     sys.exit(1)
 
 
@@ -74,16 +74,11 @@ class ChigemotsuPipeline:
             self.logger.error(f"コンポーネントの初期化に失敗: {e}")
             raise
 
-        # 統計情報をDBからロード
+        # 統計情報をDBからロード（初期表示用）
         db_stats = self.db_manager.get_pipeline_stats_summary()
-        self.pipeline_stats = {
-            "total_processed": db_stats["total_processed"],
-            "successful_detections": db_stats["successful_detections"],  # DBの集計値をそのまま使用（現状は total_processed と同一）
-            "notification_sent": db_stats["notification_sent"],
-            "start_time": datetime.now(),
-        }
+        self.pipeline_start_time = datetime.now()
 
-        self.logger.info(f"ちげもつパイプラインが初期化されました (本日の既処理数: {self.pipeline_stats['total_processed']})")
+        self.logger.info(f"ちげもつパイプラインが初期化されました (本日の既処理数: {db_stats['total_processed']})")
 
     def _setup_logging(self):
         """ログ設定"""
@@ -115,9 +110,6 @@ class ChigemotsuPipeline:
             self.logger.info(f"パイプライン処理を開始: {image_path}")
             start_time = time.time()
 
-            # 統計情報を更新
-            self.pipeline_stats["total_processed"] += 1
-
             # Step 1: 推論実行
             self.logger.info("Step 1: ちげもつ判別を実行中...")
             detection_result = self.detector.process_image(image_path)
@@ -126,8 +118,6 @@ class ChigemotsuPipeline:
                 self.logger.error("推論処理に失敗しました")
                 return False
 
-            self.pipeline_stats["successful_detections"] += 1
-            
             # Step 2: 信頼度チェック
             confidence_threshold = self.config.get("model", {}).get("threshold", 0.75)
             confidence = detection_result["confidence"]
@@ -181,7 +171,6 @@ class ChigemotsuPipeline:
                 )
 
                 if notification_success:
-                    self.pipeline_stats["notification_sent"] += 1
                     self.logger.info("LINE通知の送信に成功しました")
                     # DBは既に is_notified=1 で登録済み
                 else:
@@ -307,14 +296,15 @@ class ChigemotsuPipeline:
 
     def get_pipeline_stats(self) -> Dict[str, Any]:
         """パイプライン統計情報を取得"""
-        runtime = datetime.now() - self.pipeline_stats["start_time"]
+        db_stats = self.db_manager.get_pipeline_stats_summary()
+        runtime = datetime.now() - self.pipeline_start_time
 
         return {
             "runtime_hours": runtime.total_seconds() / 3600,
-            "total_processed": self.pipeline_stats["total_processed"],
-            "successful_detections": self.pipeline_stats["successful_detections"],
-            "notification_sent": self.pipeline_stats["notification_sent"],
-            "start_time": self.pipeline_stats["start_time"].isoformat(),
+            "total_processed": db_stats["total_processed"],
+            "successful_detections": db_stats["successful_detections"],
+            "notification_sent": db_stats["notification_sent"],
+            "start_time": self.pipeline_start_time.isoformat(),
         }
 
 

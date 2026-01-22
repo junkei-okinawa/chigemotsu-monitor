@@ -1,7 +1,10 @@
 import sqlite3
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Tuple
+
+logger = logging.getLogger(__name__)
 
 class DetectionDBManager:
     """検出結果の保存と統計情報の取得を行うデータベースマネージャー"""
@@ -122,12 +125,12 @@ class DetectionDBManager:
                 """, (timestamp, class_name, confidence, image_path, is_notified_val))
                 
                 record_id = cursor.lastrowid
+                conn.commit()
                 return should_notify, record_id
-            except Exception:
+            except Exception as e:
+                logger.error(f"DB登録中にエラーが発生しました: {e}", exc_info=True)
                 conn.rollback()
                 raise
-            else:
-                conn.commit()
 
     def update_notification_status(self, record_id: int, is_notified: bool):
         """通知ステータスを更新する（送信失敗時のロールバック用など）"""

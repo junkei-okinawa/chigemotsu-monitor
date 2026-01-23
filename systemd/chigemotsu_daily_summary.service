@@ -1,0 +1,11 @@
+[Unit]
+Description=Chigemotsu Daily Summary Notification
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=<USER>
+WorkingDirectory=<BASE_DIR>
+ExecStart=<BASE_DIR>/.venv/bin/python3 <BASE_DIR>/scripts/send_daily_summary.py --config <BASE_DIR>/config/config.json
+Environment=PYTHONUNBUFFERED=1

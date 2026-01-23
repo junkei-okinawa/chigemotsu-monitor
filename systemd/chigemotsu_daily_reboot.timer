@@ -1,0 +1,8 @@
+[Unit]
+Description=Timer for Daily System Reboot
+
+[Timer]
+OnCalendar=*-*-* 23:59:00
+
+[Install]
+WantedBy=timers.target

@@ -124,10 +124,12 @@ TARGET_SERVICE_FILE="/etc/systemd/system/libcamerify_motion.service"
 if [ -f "$SERVICE_FILE" ]; then
     echo "Setting up systemd service..."
     
-    # 標準のMotionサービス有効化と停止（競合を防ぐため）
+    # 標準のMotionサービス停止と無効化（競合を防ぐため）
     # libcamerify版が存在する場合のみ実行
-    sudo systemctl stop motion
-    sudo systemctl disable motion
+    if systemctl list-unit-files | grep -q '^motion\.service'; then
+        sudo systemctl stop motion || true
+        sudo systemctl disable motion || true
+    fi
     
     sudo cp "$SERVICE_FILE" "$TARGET_SERVICE_FILE"
     

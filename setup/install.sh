@@ -4,7 +4,7 @@
 set -e
 
 # 定数定義
-BASE_DIR="/home/junkei/cat_detection"
+BASE_DIR="${HOME}/chigemotsu-monitor"
 CONFIG_DIR="${BASE_DIR}/config"
 SCRIPTS_DIR="${BASE_DIR}/scripts"
 MODELS_DIR="${BASE_DIR}/models"

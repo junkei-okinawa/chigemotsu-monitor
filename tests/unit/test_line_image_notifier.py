@@ -201,7 +201,7 @@ class TestLineImageNotifier(unittest.TestCase):
             with patch.object(notifier, '_send_line_message', return_value=True) as mock_send:
                 result = notifier.send_detection_notification(
                     image_path="/path/to/test.jpg",
-                    confidence=0.85,
+                    confidence=85.0,
                     class_name="chige"
                 )
                 

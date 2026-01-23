@@ -17,7 +17,7 @@ fi
 echo "Python バージョン: $PYTHON_VERSION"
 
 # 作業ディレクトリを作成（/home/junkei配下）
-WORK_DIR="/home/junkei/tflite_install_$(date +%Y%m%d_%H%M%S)"
+WORK_DIR="${HOME}/tflite_install_$(date +%Y%m%d_%H%M%S)"
 echo "作業ディレクトリ: $WORK_DIR"
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"

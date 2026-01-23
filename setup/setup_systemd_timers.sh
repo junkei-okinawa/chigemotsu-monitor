@@ -29,8 +29,8 @@ for FILE in "${FILES[@]}"; do
 
         # プレースホルダーの置換
         # sed の置換文字列で特別な意味を持つ文字 (\, &, |) をエスケープ
-        ESCAPED_USER=$(printf '%s' "$CURRENT_USER" | sed 's/[\&|]/\\&/g')
-        ESCAPED_BASE_DIR=$(printf '%s' "$BASE_DIR" | sed 's/[\&|]/\\&/g')
+        ESCAPED_USER=$(printf '%s' "$CURRENT_USER" | sed 's/[\\&|]/\\&/g')
+        ESCAPED_BASE_DIR=$(printf '%s' "$BASE_DIR" | sed 's/[\\&|]/\\&/g')
 
         sudo sed -i "s|<USER>|$ESCAPED_USER|g" "$DST"
         sudo sed -i "s|<BASE_DIR>|$ESCAPED_BASE_DIR|g" "$DST"

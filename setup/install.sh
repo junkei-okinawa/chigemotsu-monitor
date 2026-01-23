@@ -136,8 +136,8 @@ if [ -f "$SERVICE_FILE" ]; then
     CURRENT_GROUP=$(id -gn)
     
     # sed の置換文字列で特別な意味を持つ文字 (\, &, |) をエスケープ
-    ESCAPED_USER=$(printf '%s' "$CURRENT_USER" | sed 's/[\&|]/\\&/g')
-    ESCAPED_GROUP=$(printf '%s' "$CURRENT_GROUP" | sed 's/[\&|]/\\&/g')
+    ESCAPED_USER=$(printf '%s' "$CURRENT_USER" | sed 's/[\\&|]/\\&/g')
+    ESCAPED_GROUP=$(printf '%s' "$CURRENT_GROUP" | sed 's/[\\&|]/\\&/g')
     
     sudo sed -i "s|<USER>|$ESCAPED_USER|g" "$TARGET_SERVICE_FILE"
     sudo sed -i "s|<GROUP>|$ESCAPED_GROUP|g" "$TARGET_SERVICE_FILE"

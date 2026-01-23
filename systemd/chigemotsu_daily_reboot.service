@@ -6,6 +6,15 @@ After=chigemotsu_daily_summary.service
 Wants=chigemotsu_daily_summary.service
 
 [Service]
+
 Type=oneshot
+
 User=root
+
 ExecStart=/usr/bin/systemctl reboot
+
+
+
+[Install]
+
+WantedBy=multi-user.target

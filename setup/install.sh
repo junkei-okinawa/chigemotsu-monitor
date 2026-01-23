@@ -134,8 +134,19 @@ if [ -f "$SERVICE_FILE" ]; then
     # USERとGROUPプレースホルダの置き換え（他のsystemd設定と統一）
     CURRENT_USER=$(whoami)
     CURRENT_GROUP=$(id -gn)
-    sudo sed -i "s/<USER>/$CURRENT_USER/g" "$TARGET_SERVICE_FILE"
-    sudo sed -i "s/<GROUP>/$CURRENT_GROUP/g" "$TARGET_SERVICE_FILE"
+    
+    # sed の置換文字列で特別な意味を持つ文字 (\, &, |) をエスケープ
+    ESCAPED_USER=$(printf '%s' "$CURRENT_USER" | sed 's/[\&|]/\\&/g')
+    ESCAPED_GROUP=$(printf '%s' "$CURRENT_GROUP" | sed 's/[\&|]/\\&/g')
+    
+    sudo sed -i "s|<USER>|$ESCAPED_USER|g" "$TARGET_SERVICE_FILE"
+    sudo sed -i "s|<GROUP>|$ESCAPED_GROUP|g" "$TARGET_SERVICE_FILE"
+    
+    # 置換が成功したことを確認
+    if grep -q '<USER>\|<GROUP>' "$TARGET_SERVICE_FILE"; then
+        echo "Error: Placeholder replacement failed in $TARGET_SERVICE_FILE"
+        exit 1
+    fi
     
     # 新しいサービスの有効化と起動
     sudo systemctl daemon-reload

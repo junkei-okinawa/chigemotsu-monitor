@@ -1,6 +1,11 @@
 [Unit]
 Description=Daily System Reboot
+DefaultDependencies=no
+Conflicts=shutdown.target
+After=chigemotsu_daily_summary.service
+Wants=chigemotsu_daily_summary.service
 
 [Service]
 Type=oneshot
-ExecStart=/sbin/reboot
+User=root
+ExecStart=/usr/bin/systemctl reboot

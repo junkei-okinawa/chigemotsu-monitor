@@ -117,27 +117,25 @@ EOF
 # Motion設定確認
 echo "Motion configuration updated"
 
-# 標準のMotionサービス有効化と停止
-sudo systemctl enable motion
-sudo systemctl stop motion
-
 # Systemdサービスの設定 (libcamerify_motion)
 SERVICE_FILE="${BASE_DIR}/systemd/libcamerify_motion.service"
 TARGET_SERVICE_FILE="/etc/systemd/system/libcamerify_motion.service"
 
 if [ -f "$SERVICE_FILE" ]; then
     echo "Setting up systemd service..."
-    sudo cp "$SERVICE_FILE" "$TARGET_SERVICE_FILE"
     
-    # ユーザー名とグループ名の置き換え
-    CURRENT_USER=$(whoami)
-    CURRENT_GROUP=$(id -gn)
-    sudo sed -i "s/<user_name>/$CURRENT_USER/g" "$TARGET_SERVICE_FILE"
-    sudo sed -i "s/<group_name>/$CURRENT_GROUP/g" "$TARGET_SERVICE_FILE"
-    
-    # 標準のmotionサービスを無効化（競合を防ぐため）
+    # 標準のMotionサービス有効化と停止（競合を防ぐため）
+    # libcamerify版が存在する場合のみ実行
     sudo systemctl stop motion
     sudo systemctl disable motion
+    
+    sudo cp "$SERVICE_FILE" "$TARGET_SERVICE_FILE"
+    
+    # USERとGROUPプレースホルダの置き換え（他のsystemd設定と統一）
+    CURRENT_USER=$(whoami)
+    CURRENT_GROUP=$(id -gn)
+    sudo sed -i "s/<USER>/$CURRENT_USER/g" "$TARGET_SERVICE_FILE"
+    sudo sed -i "s/<GROUP>/$CURRENT_GROUP/g" "$TARGET_SERVICE_FILE"
     
     # 新しいサービスの有効化と起動
     sudo systemctl daemon-reload

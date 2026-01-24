@@ -49,6 +49,8 @@ cd chigemotsu-monitor
 python scripts/chigemotsu_pipeline.py --test
 
 # Systemdサービスの状態確認
+# ※ 事前に `libcamerify` コマンドを提供するパッケージをインストールしておいてください
+#    （詳細な手順は docs/DEPLOYMENT.md を参照）
 sudo systemctl status libcamerify_motion
 ```
 

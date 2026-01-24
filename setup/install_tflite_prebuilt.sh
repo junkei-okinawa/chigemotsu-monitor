@@ -86,7 +86,7 @@ else
     ls -la extracted/
     
     # Pythonライブラリパスを取得
-    PYTHON_LIB_PATH=$(python3 -c "import site; print(site.getusersitepackages())")
+    PYTHON_LIB_PATH=$(python3 -c "import site; print(site.getsitepackages()[0])")
     echo "Python ライブラリパス: $PYTHON_LIB_PATH"
     mkdir -p "$PYTHON_LIB_PATH"
     

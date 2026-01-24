@@ -17,7 +17,7 @@ echo "Installing Cat Detection System for Raspberry Pi Zero..."
 sudo apt update && sudo apt upgrade -y
 
 # 必要パッケージインストール
-sudo apt install -y git openssl libssl-dev libbz2-dev libreadline-dev libsqlite3-dev python3-pip motion
+sudo apt install -y git openssl libssl-dev libbz2-dev libreadline-dev libsqlite3-dev python3-pip motion libcamerify
 
 # ディレクトリ作成
 sudo mkdir -p "${BASE_DIR}"/{models,scripts,config,logs,temp}

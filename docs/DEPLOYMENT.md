@@ -64,6 +64,9 @@ ssh pi@[PI_IP_ADDRESS]
 
 ### 自動インストール実行
 
+> [!IMPORTANT]
+> **重要**: インストールスクリプトを実行する前に、必ず `libcamerify` がインストールされていることを確認してください（Step 1参照）。インストールされていない場合、サービスの起動に失敗します。
+
 ```bash
 # chigemotsu-monitorディレクトリに移動
 cd /home/pi/chigemotsu-monitor

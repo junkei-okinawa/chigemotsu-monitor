@@ -34,7 +34,7 @@ chmod 600 config/r2_credentials.json
 
 ```bash
 # R2接続テスト
-python3 scripts/r2_uploader.py --test
+python3 scripts/r2_uploader.py test
 
 # 設定ファイル確認
 python3 -c "

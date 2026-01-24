@@ -69,7 +69,7 @@ chmod +x setup_line_notifications.sh
 
 ### 2. R2接続テスト
 ```bash
-python3 r2_uploader.py --test
+python3 scripts/r2_uploader.py test
 ```
 
 ### 3. LINE通知テスト

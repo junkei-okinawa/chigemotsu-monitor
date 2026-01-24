@@ -58,8 +58,8 @@ ls /dev/video*
 
 ```bash
 # ローカルからRaspberry Piにproductionディレクトリを転送
-# (chigemotsu-monitor ディレクトリとして配置)
-scp -r production/ pi@[PI_IP_ADDRESS]:/home/pi/chigemotsu-monitor
+# (chigemotsu-monitor ディレクトリ直下に配置されるよう、末尾スラッシュ付きでrsyncを使用)
+rsync -avz production/ pi@[PI_IP_ADDRESS]:/home/pi/chigemotsu-monitor/
 
 # Raspberry Piにログイン
 ssh pi@[PI_IP_ADDRESS]
@@ -68,7 +68,7 @@ ssh pi@[PI_IP_ADDRESS]
 ### 自動インストール実行
 
 ```bash
-# productionディレクトリに移動
+# chigemotsu-monitorディレクトリに移動
 cd /home/pi/chigemotsu-monitor
 
 # インストールスクリプト実行権限付与
@@ -165,8 +165,11 @@ sudo systemctl list-timers --all | grep chigemotsu
 # サービスログ（Systemd）
 sudo journalctl -u libcamerify_motion -f
 
-# アプリケーションログ
-tail -f /home/pi/chigemotsu-monitor/logs/cat_detection_motion.log
+# アプリケーションログ（パイプライン全体のログ）
+tail -f /home/pi/chigemotsu-monitor/logs/chigemotsu_pipeline.log
+
+# 検出・推論処理の詳細ログ
+tail -f /home/pi/chigemotsu-monitor/logs/chigemotsu_detection.log
 ```
 
 ## 📊 Step 7: 運用監視・メンテナンス
@@ -201,7 +204,7 @@ sudo systemctl restart libcamerify_motion
 ```bash
 # カメラ前で動いて検出テスト
 # ログで検出結果確認
-tail -f /home/pi/chigemotsu-monitor/logs/cat_detection_motion.log
+tail -f /home/pi/chigemotsu-monitor/logs/chigemotsu_detection.log
 ```
 
 ### 閾値調整（必要に応じて）
@@ -258,7 +261,7 @@ du -sh /home/pi/chigemotsu-monitor/logs/*
 
 - [ ] Raspberry Pi Zero基本セットアップ完了
 - [ ] カメラ動作確認
-- [ ] Production環境インストール完了 (`install.sh` 実行)
+- [ ] Production環境インストール完了 (`./setup/install.sh` 実行)
 - [ ] LINE認証情報設定 (`line_credentials.json`)
 - [ ] モデル配置・推論テスト
 - [ ] Systemdサービス (`libcamerify_motion`) 起動確認

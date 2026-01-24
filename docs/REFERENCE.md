@@ -197,7 +197,7 @@ python scripts/integrated_detection.py --stats
 
 ### Motion連携設定
 
-インストールスクリプト (`install.sh`) により、`/etc/motion/motion.conf` が自動的に更新され、画像保存時に `scripts/chigemotsu_detect.sh` が呼び出されるようになります。
+インストールスクリプト (`setup/install.sh`) により、`/etc/motion/motion.conf` が自動的に更新され、画像保存時に `scripts/chigemotsu_detect.sh` が呼び出されるようになります。
 
 ### Systemdサービス管理
 

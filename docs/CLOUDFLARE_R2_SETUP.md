@@ -22,11 +22,6 @@ Cloudflare R2ストレージを使用してLINE通知に画像を含める機能
 - TFLiteモデルを使用した物体検出
 - 連続監視機能
 
-### 4. セットアップスクリプト (`setup_line_notifications.sh`)
-- Raspberry Pi Zero用の自動セットアップ
-- 依存関係のインストール
-- systemdサービスの設定
-
 ## 設定
 
 ### config.json
@@ -62,8 +57,8 @@ Cloudflare R2ストレージを使用してLINE通知に画像を含める機能
 
 ### 1. セットアップ（Raspberry Pi Zero）
 ```bash
-chmod +x scripts/setup_line_notifications.sh
-./scripts/setup_line_notifications.sh
+# メインのインストールスクリプトを実行（依存関係やサービスが登録されます）
+./setup/install.sh
 ```
 
 ### 2. R2接続テスト
@@ -74,13 +69,10 @@ python3 scripts/r2_uploader.py test
 ### 3. LINE通知テスト
 ```bash
 # シンプルなテスト
-python3 scripts/test_line_notification.py --simple
+python3 scripts/test_line_notification.py --test simple
 
 # 画像付き通知テスト
 python3 scripts/line_image_notifier.py --test
-
-# 全機能テスト
-# (必要に応じて他のテストスクリプトも実行してください)
 ```
 
 ### 4. 画像通知の送信

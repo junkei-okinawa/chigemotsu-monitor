@@ -17,7 +17,7 @@ echo "Installing Cat Detection System for Raspberry Pi Zero..."
 sudo apt update && sudo apt upgrade -y
 
 # 必要パッケージインストール
-sudo apt install -y git openssl libssl-dev libbz2-dev libreadline-dev libsqlite3-dev python3-pip motion screen
+sudo apt install -y git openssl libssl-dev libbz2-dev libreadline-dev libsqlite3-dev python3-pip motion
 
 # ディレクトリ作成
 sudo mkdir -p "${BASE_DIR}"/{models,scripts,config,logs,temp}
@@ -117,19 +117,57 @@ EOF
 # Motion設定確認
 echo "Motion configuration updated"
 
-# Motionサービス有効化と停止
-sudo systemctl enable motion
-sudo systemctl stop motion
+# Systemdサービスの設定 (libcamerify_motion)
+SERVICE_FILE="${BASE_DIR}/systemd/libcamerify_motion.service"
+TARGET_SERVICE_FILE="/etc/systemd/system/libcamerify_motion.service"
 
-# screenとlibcamerifyでmotionを起動
-# セッションにはアタッチせず、バックグラウンドで実行
-# セッション名は "motion" とする
-echo "Starting motion in a detached screen session..."
-if screen -list | grep -q "motion"; then
-    echo "Screen session 'motion' already exists. Stopping it..."
-    screen -S motion -X quit
+if [ -f "$SERVICE_FILE" ]; then
+    echo "Setting up systemd service..."
+    
+    # 標準のMotionサービス停止と無効化（競合を防ぐため）
+    # libcamerify版が存在する場合のみ実行
+    if systemctl list-unit-files | grep -q '^motion\.service'; then
+        sudo systemctl stop motion || true
+        sudo systemctl disable motion || true
+    fi
+    
+    sudo cp "$SERVICE_FILE" "$TARGET_SERVICE_FILE"
+    
+    # USERとGROUPプレースホルダの置き換え（他のsystemd設定と統一）
+    CURRENT_USER=$(whoami)
+    CURRENT_GROUP=$(id -gn)
+    
+    # sed の置換文字列で特別な意味を持つ文字 (\, &, |) をエスケープ
+    ESCAPED_USER=$(printf '%s' "$CURRENT_USER" | sed 's/[\\&|]/\\&/g')
+    ESCAPED_GROUP=$(printf '%s' "$CURRENT_GROUP" | sed 's/[\\&|]/\\&/g')
+    
+    sudo sed -i "s|<USER>|$ESCAPED_USER|g" "$TARGET_SERVICE_FILE"
+    sudo sed -i "s|<GROUP>|$ESCAPED_GROUP|g" "$TARGET_SERVICE_FILE"
+    
+    # 置換が成功したことを確認
+    if grep -q '<USER>\|<GROUP>' "$TARGET_SERVICE_FILE"; then
+        echo "Error: Placeholder replacement failed in $TARGET_SERVICE_FILE"
+        exit 1
+    fi
+    
+    # 新しいサービスの有効化と起動
+    sudo systemctl daemon-reload
+    sudo systemctl enable libcamerify_motion
+    sudo systemctl restart libcamerify_motion
+    
+    echo "libcamerify_motion service started."
+else
+    echo "Error: Service file not found at $SERVICE_FILE"
+    echo "Skipping service installation."
 fi
-screen -dmS motion libcamerify motion
+
+# 自動タスク（日次サマリー・リブート）のタイマー設定
+if [ -f "${BASE_DIR}/setup/setup_systemd_timers.sh" ]; then
+    echo "Setting up systemd timers..."
+    bash "${BASE_DIR}/setup/setup_systemd_timers.sh"
+else
+    echo "Warning: setup_systemd_timers.sh not found."
+fi
 
 echo "Setup completed!"
 echo ""
@@ -140,16 +178,22 @@ echo ""
 echo "2. Edit LINE credentials:"
 echo "   nano ${CONFIG_DIR}/line_credentials.json"
 echo ""
-echo "3. Start the system:"
-echo "   ${BASE_DIR}/start.sh"
+echo "3. Check service status:"
+echo "   sudo systemctl status libcamerify_motion"
+echo "   sudo systemctl list-timers --all | grep chigemotsu"
 echo ""
 echo "4. Check logs:"
+echo "   # Service logs"
+echo "   sudo journalctl -u libcamerify_motion -f"
+echo "   # Python app logs"
 echo "   tail -f ${LOGS_DIR}/cat_detection_motion.log"
 echo ""
-echo "5. Stop the system:"
-echo "   ${BASE_DIR}/stop.sh"
+echo "5. Stop/Start the system:"
+echo "   sudo systemctl stop libcamerify_motion"
+echo "   sudo systemctl start libcamerify_motion"
 echo ""
 echo "Configuration files:"
 echo "  - Main config: ${CONFIG_DIR}/config.json"
 echo "  - LINE config: ${CONFIG_DIR}/line_credentials.json"
 echo "  - Motion config: /etc/motion/motion.conf"
+echo "  - Service definition: /etc/systemd/system/libcamerify_motion.service"

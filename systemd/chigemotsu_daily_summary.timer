@@ -1,0 +1,10 @@
+[Unit]
+Description=Timer for Chigemotsu Daily Summary Notification
+
+[Timer]
+Unit=chigemotsu_daily_summary.service
+OnCalendar=*-*-* 23:50:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

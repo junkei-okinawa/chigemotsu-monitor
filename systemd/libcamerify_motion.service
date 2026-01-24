@@ -4,10 +4,10 @@ After=network.target
 
 [Service]
 Type=simple
-# Set the user to run the service. Replace <user_name> with your actual username.
-User=<user_name>
-# (Optional) Set the group to run the service. Replace <group_name> with your actual group name, or remove this line if not needed.
-Group=<group_name>
+# Set the user to run the service. Replace <USER> with your actual username.
+User=<USER>
+# (Optional) Set the group to run the service. Replace <GROUP> with your actual group name, or remove this line if not needed.
+Group=<GROUP>
 WorkingDirectory=/tmp
 ExecStart=libcamerify motion
 Restart=always

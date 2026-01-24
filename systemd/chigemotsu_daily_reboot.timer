@@ -1,0 +1,9 @@
+[Unit]
+Description=Timer for Daily System Reboot
+
+[Timer]
+Unit=chigemotsu_daily_reboot.service
+OnCalendar=*-*-* 23:59:00
+
+[Install]
+WantedBy=timers.target

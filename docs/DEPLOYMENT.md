@@ -7,9 +7,6 @@
 ```bash
 # productionディレクトリに移動
 cd production/
-
-# デプロイメントチェック実行
-python3 scripts/check_deployment.py
 ```
 
 ### 必要な情報・ファイル
@@ -240,7 +237,7 @@ grep videodevice /etc/motion/motion.conf
 ```bash
 # 仮想環境とtflite_micro_runtimeの確認
 source .venv/bin/activate
-python3 -c "import tflite_micro_runtime; print('OK')"
+python3 -c "from tflite_micro_runtime import interpreter; print('OK')"
 # モデルファイル確認
 ls -la /home/pi/chigemotsu-monitor/models/
 ```

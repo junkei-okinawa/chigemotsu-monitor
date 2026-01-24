@@ -94,8 +94,8 @@ sudo nano /etc/motion/motion.conf
 
 ### 3. motionの再起動
 ```bash
-sudo systemctl restart motion
-sudo systemctl status motion
+sudo systemctl restart libcamerify_motion
+sudo systemctl status libcamerify_motion
 ```
 
 ## 動作確認

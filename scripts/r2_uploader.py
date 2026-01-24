@@ -369,7 +369,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("--image", help="Image file path (for upload)")
     parser.add_argument(
-        "--config", default="../config/config.json", help="Config file path"
+        "--config",
+        default=str(project_root / "config" / "config.json"),
+        help="Config file path",
     )
     parser.add_argument("--description", default="", help="Image description")
     parser.add_argument(
@@ -377,8 +379,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO)
 
     try:
         uploader = R2Uploader(args.config)

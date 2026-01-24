@@ -358,7 +358,7 @@ class R2Uploader:
             return False
 
 
-if __name__ == "__main__":
+def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Cloudflare R2 Image Uploader")
@@ -388,11 +388,12 @@ if __name__ == "__main__":
                 print("✅ R2接続テスト成功")
             else:
                 print("❌ R2接続テスト失敗")
+                sys.exit(1)
 
         elif args.command == "upload":
             if not args.image:
                 print("Error: --image required for upload")
-                exit(1)
+                sys.exit(1)
             url = uploader.upload_image(args.image, args.description)
             print(f"Upload successful: {url}")
 
@@ -417,4 +418,8 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"Error: {e}")
-        exit(1)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

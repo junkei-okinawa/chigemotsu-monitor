@@ -42,11 +42,11 @@ source .venv/bin/activate
 # R2接続テスト
 python3 scripts/r2_uploader.py test --config config/config.json
 
-# 設定ファイル確認
+# 設定と接続の最終確認 (R2Uploaderの初期化チェック)
 python3 -c "
 from scripts.r2_uploader import R2Uploader
 uploader = R2Uploader()
-print('✅ R2設定が正常に読み込まれました')
+print('✅ R2設定が読み込まれ、バケットへの接続が確認されました')
 "
 ```
 

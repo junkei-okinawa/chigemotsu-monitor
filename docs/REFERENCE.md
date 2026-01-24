@@ -210,6 +210,15 @@ python scripts/integrated_detection.py --stats
 # 状態確認
 sudo systemctl status libcamerify_motion
 
+> **注意**: `libcamerify_motion` サービスは、コマンド `libcamerify` を前提としています。  
+> 代表的な環境 (Raspberry Pi OS / Debian系) では、`libcamerify` コマンドは `libcamerify` パッケージにより提供されます。  
+>
+> インストール例:
+> ```bash
+> sudo apt-get update
+> sudo apt-get install libcamerify
+> ```
+
 # ログ確認
 sudo journalctl -u libcamerify_motion -f
 

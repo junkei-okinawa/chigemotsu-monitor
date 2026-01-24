@@ -34,7 +34,7 @@ ssh pi@[PI_IP_ADDRESS]
 sudo apt update && sudo apt upgrade -y
 
 # 必要パッケージインストール
-sudo apt install -y git rsync
+sudo apt install -y git rsync libcamerify
 ```
 
 ### カメラ設定
@@ -134,9 +134,12 @@ python3 scripts/integrated_detection.py --test
 ### LINE通知テスト
 
 ```bash
-# LINE通知手動テスト
+# LINE通知手動テスト (テキストのみの確認)
 cd /home/pi/chigemotsu-monitor
-python3 scripts/line_image_notifier.py --test
+python3 scripts/test_line_notification.py --test simple
+
+# 画像付き通知テスト (注意: 事前に R2 の設定が必要です)
+# python3 scripts/line_image_notifier.py --test
 ```
 
 ### パイプライン全体テスト
@@ -150,6 +153,7 @@ python3 scripts/chigemotsu_pipeline.py --test
 
 ### サービスの状態確認
 インストールスクリプトにより、システムは既に起動しています。
+> **注意**: `libcamerify_motion` サービスは `libcamerify` コマンドがインストールされている必要があります（Step 1参照）。
 
 ```bash
 # 猫検出システム（Motion + libcamerify）の確認

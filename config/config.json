@@ -1,6 +1,6 @@
 {
   "model": {
-    "model_path": "./models/mobilenet_v2_tensorflow_float32_20250801.tflite",
+    "model_path": "./models/mobilenet_v2_micro_float32.tflite",
     "class_names": ["chige", "motsu", "other"],
     "threshold": 0.6,
     "timeout_seconds": 60

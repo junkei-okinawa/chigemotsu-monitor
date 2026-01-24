@@ -378,14 +378,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # 設定読み込み
-    with open(args.config) as f:
-        config = json.load(f)
-
     logging.basicConfig(level=logging.INFO)
 
     try:
-        uploader = R2Uploader(config)
+        uploader = R2Uploader(args.config)
 
         if args.command == "test":
             if uploader.test_connection():

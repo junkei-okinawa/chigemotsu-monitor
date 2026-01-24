@@ -57,6 +57,9 @@ Cloudflare R2ストレージを使用してLINE通知に画像を含める機能
 
 ### 1. セットアップ（Raspberry Pi Zero）
 ```bash
+# リポジトリをクローンしたディレクトリ（例）
+cd /home/pi/chigemotsu-monitor
+
 # メインのインストールスクリプトを実行（依存関係やサービスが登録されます）
 ./setup/install.sh
 ```

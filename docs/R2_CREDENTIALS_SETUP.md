@@ -33,12 +33,15 @@ chmod 600 config/r2_credentials.json
 ## 設定の確認
 
 ```bash
+# プロジェクトのリポジトリルートに移動 (例)
+cd /home/pi/chigemotsu-monitor
+
 # R2接続テスト
 python3 scripts/r2_uploader.py test --config config/config.json
 
 # 設定ファイル確認
 python3 -c "
-from production.scripts.r2_uploader import R2Uploader
+from scripts.r2_uploader import R2Uploader
 uploader = R2Uploader()
 print('✅ R2設定が正常に読み込まれました')
 "

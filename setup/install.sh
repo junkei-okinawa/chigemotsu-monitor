@@ -55,7 +55,7 @@ fi
 echo "Creating Python virtual environment..."
 cd "${BASE_DIR}"
 echo "3.9.19" > .python-version
-uv sync
+uv sync --python 3.9.19
 source .venv/bin/activate
 
 # 最適化されたtflite Micro Runtimeをインストール

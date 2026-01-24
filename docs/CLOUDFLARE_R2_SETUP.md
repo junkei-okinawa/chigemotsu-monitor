@@ -63,7 +63,8 @@ Cloudflare R2ストレージを使用してLINE通知に画像を含める機能
 
 ### 2. R2接続テスト
 ```bash
-python3 scripts/r2_uploader.py test
+# リポジトリルートから実行する場合
+python3 scripts/r2_uploader.py test --config config/config.json
 ```
 
 ### 3. LINE通知テスト

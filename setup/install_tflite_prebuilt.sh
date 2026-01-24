@@ -26,6 +26,8 @@ cd "$WORK_DIR"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOCAL_ARCHIVE="${PROJECT_ROOT}/tflite_micro_runtime_rpiv6.tar.gz"
+LOCAL_SHA256="934363d4db8653942399dd316693715f6105390c49a0ba06f3175fef40986a90"
+REMOTE_SHA256="f8ec28dec040e5d1d2104f036b42f4d83d0d441f63edc51f178e8284c91ce38d"
 
 DOWNLOADED=false
 WHEEL_FILE=""
@@ -33,15 +35,24 @@ WHEEL_FILE=""
 # まずローカルのアーカイブをチェック
 if [ -f "$LOCAL_ARCHIVE" ]; then
     echo "✓ ローカルのバイナリパッケージが見つかりました: $LOCAL_ARCHIVE"
-    mkdir -p extracted
-    tar -xzf "$LOCAL_ARCHIVE" -C extracted/
-    DOWNLOADED=true
-    WHEEL_FILE="LOCAL_ARCHIVE"
-else
-    echo "ローカルパッケージが見つからないため、ダウンロードを試行します..."
+    # チェックサム検証
+    if echo "$LOCAL_SHA256  $LOCAL_ARCHIVE" | shasum -a 256 -c - >/dev/null 2>&1; then
+        echo "✓ ローカルパッケージのチェックサム検証に成功しました"
+        mkdir -p extracted
+        tar -xzf "$LOCAL_ARCHIVE" -C extracted/
+        DOWNLOADED=true
+        WHEEL_FILE="$LOCAL_ARCHIVE"
+    else
+        echo "⚠️  警告: ローカルパッケージのチェックサムが一致しません。ダウンロードを試行します。"
+    fi
+fi
+
+if [ "$DOWNLOADED" = false ]; then
+    echo "リモートパッケージのダウンロードを試行します..."
     
     # 複数のソースからTensorFlow Lite Runtime の軽量版をダウンロード
-    WHEEL_URLS="https://github.com/charlie2951/tflite_micro_rpi0/raw/main/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"
+    # セキュリティのため特定のコミットハッシュにピン留め
+    WHEEL_URLS="https://github.com/charlie2951/tflite_micro_rpi0/raw/de1e21b5f2d95e459b1f705994190e6f38978e96/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"
     WHEEL_FILENAME=$(basename "$WHEEL_URLS")
 
     # wgetまたはcurlでダウンロード（詳細ログ付き）
@@ -49,9 +60,15 @@ else
         echo "wgetを使用してダウンロード中..."
         if wget --timeout=30 --tries=2 "$WHEEL_URLS" -O "$WHEEL_FILENAME" 2>&1; then
             if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
-                echo "✓ ダウンロード成功: $(ls -lh "$WHEEL_FILENAME")"
-                DOWNLOADED=true
-                WHEEL_FILE="$WHEEL_FILENAME"
+                # チェックサム検証
+                if echo "$REMOTE_SHA256  $WHEEL_FILENAME" | shasum -a 256 -c - >/dev/null 2>&1; then
+                    echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FILENAME")"
+                    DOWNLOADED=true
+                    WHEEL_FILE="$WHEEL_FILENAME"
+                else
+                    echo "❌ エラー: ダウンロードされたファイルのチェックサムが一致しません"
+                    rm -f "$WHEEL_FILENAME"
+                fi
             else
                 echo "❌ ファイルが空またはダウンロードに失敗"
                 rm -f "$WHEEL_FILENAME"
@@ -61,9 +78,15 @@ else
         echo "curlを使用してダウンロード中..."
         if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URLS" -o "$WHEEL_FILENAME" 2>&1; then
             if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
-                echo "✓ ダウンロード成功: $(ls -lh "$WHEEL_FILENAME")"
-                DOWNLOADED=true
-                WHEEL_FILE="$WHEEL_FILENAME"
+                # チェックサム検証
+                if echo "$REMOTE_SHA256  $WHEEL_FILENAME" | shasum -a 256 -c - >/dev/null 2>&1; then
+                    echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FILENAME")"
+                    DOWNLOADED=true
+                    WHEEL_FILE="$WHEEL_FILENAME"
+                else
+                    echo "❌ エラー: ダウンロードされたファイルのチェックサムが一致しません"
+                    rm -f "$WHEEL_FILENAME"
+                fi
             else
                 echo "❌ ファイルが空またはダウンロードに失敗"
                 rm -f "$WHEEL_FILENAME"

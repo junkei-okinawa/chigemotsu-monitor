@@ -158,14 +158,14 @@ line_user_id については後述します。
 - `line_credentials.json` ファイルは `.gitignore` に追加済み
 - ファイル権限を適切に設定:
 ```bash
-chmod 600 production/config/line_credentials.json
+chmod 600 config/line_credentials.json
 ```
 
 ## 設定の確認
 
 ```bash
 # LINE接続テスト
-python3 production/scripts/line_image_notifier.py --test
+python3 scripts/line_image_notifier.py --test
 
 # 設定ファイル確認
 python3 -c "

@@ -234,9 +234,9 @@ def main():
         print("\n=== 変換完了 ===")
         print(f"入力: {args.input}")
         print(f"出力: {result_path}")
-        print("\n使用方法:")
-        print("1. production/config/config.json の model_path を新しいファイルに更新")
-        print("2. python scripts/test_line_notification.py --test chige で動作確認")
+    print("\n--- 次のステップ ---")
+    print("1. config/config.json の model_path を新しいファイルに更新")
+    print("2. Raspberry Pi に新しいモデルファイルを転送")
         
     except Exception as e:
         print(f"\n❌ エラー: {e}")

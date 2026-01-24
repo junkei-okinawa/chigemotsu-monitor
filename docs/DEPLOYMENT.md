@@ -5,8 +5,8 @@
 ### ローカル環境での事前確認
 
 ```bash
-# productionディレクトリに移動
-cd production/
+# プロジェクトのリポジトリルートに移動 (例: chigemotsu-monitor/)
+cd chigemotsu-monitor/
 ```
 
 ### 必要な情報・ファイル
@@ -54,9 +54,9 @@ ls /dev/video*
 ### ファイル転送
 
 ```bash
-# ローカルからRaspberry Piにproductionディレクトリを転送
+# ローカルからRaspberry Piにリポジトリ一式を転送
 # (chigemotsu-monitor ディレクトリ直下に配置されるよう、末尾スラッシュ付きでrsyncを使用)
-rsync -avz production/ pi@[PI_IP_ADDRESS]:/home/pi/chigemotsu-monitor/
+rsync -avz ./ pi@[PI_IP_ADDRESS]:/home/pi/chigemotsu-monitor/
 
 # Raspberry Piにログイン
 ssh pi@[PI_IP_ADDRESS]

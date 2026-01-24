@@ -183,25 +183,16 @@ height 240
 
 ## 運用監視
 
-### systemdサービス化（オプション）
+### Systemdによるデーモン化（標準構成）
+
+本システムでは、`setup/install.sh` を実行することで、`motion` が Systemd サービス `libcamerify_motion.service` として自動的に登録されます。
+
 ```bash
-# サービスファイルを作成
-sudo nano /etc/systemd/system/chigemotsu-motion.service
+# サービスの状態確認
+sudo systemctl status libcamerify_motion
+
+# ログの確認
+sudo journalctl -u libcamerify_motion -f
 ```
 
-```ini
-[Unit]
-Description=Chigemotsu Motion Integration Service
-After=motion.service
-
-[Service]
-Type=simple
-User=pi
-ExecStart=/bin/bash -c "tail -f /home/pi/motion_images/*.jpg | while read file; do /home/pi/chigemotsu/chigemotsu-monitor/scripts/chigemotsu_detect.sh \"$file\"; done"
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-これでmotionの動体検知と完全に連携したchigemotsu判別システムが構築できます。
+これにより、Raspberry Pi の起動時に自動的にカメラ監視が開始され、万が一プロセスがクラッシュしても自動的に再起動されます。

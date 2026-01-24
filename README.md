@@ -47,6 +47,9 @@ cd chigemotsu-monitor
 ```bash
 # パイプラインのテスト実行
 python scripts/chigemotsu_pipeline.py --test
+
+# Systemdサービスの状態確認
+sudo systemctl status libcamerify_motion
 ```
 
 ## ドキュメント

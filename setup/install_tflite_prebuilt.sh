@@ -22,26 +22,36 @@ echo "作業ディレクトリ: $WORK_DIR"
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
 
-echo "事前ビルド済みパッケージをダウンロード中..."
+# プロジェクトルートを取得（このスクリプトの2つ上の階層）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+LOCAL_ARCHIVE="${PROJECT_ROOT}/tflite_micro_runtime_rpiv6.tar.gz"
 
-# 複数のソースからTensorFlow Lite Runtime の軽量版をダウンロード
-
-WHEEL_URLS="https://github.com/charlie2951/tflite_micro_rpi0/raw/main/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"
-
-# 複数のURLを試行
 DOWNLOADED=false
 WHEEL_FILE=""
-WHEEL_FILENAME=$(basename "$WHEEL_URLS")
 
-# wgetまたはcurlでダウンロード（詳細ログ付き）
-if command -v wget >/dev/null 2>&1; then
-    echo "wgetを使用してダウンロード中..."
-    if wget --timeout=30 --tries=2 "$WHEEL_URLS" -O "$WHEEL_FILENAME" 2>&1; then
-        if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
-            echo "✓ ダウンロード成功: $(ls -lh "$WHEEL_FILENAME")"
-            DOWNLOADED=true
-            WHEEL_FILE="$WHEEL_FILENAME"
-                break
+# まずローカルのアーカイブをチェック
+if [ -f "$LOCAL_ARCHIVE" ]; then
+    echo "✓ ローカルのバイナリパッケージが見つかりました: $LOCAL_ARCHIVE"
+    mkdir -p extracted
+    tar -xzf "$LOCAL_ARCHIVE" -C extracted/
+    DOWNLOADED=true
+    WHEEL_FILE="LOCAL_ARCHIVE"
+else
+    echo "ローカルパッケージが見つからないため、ダウンロードを試行します..."
+    
+    # 複数のソースからTensorFlow Lite Runtime の軽量版をダウンロード
+    WHEEL_URLS="https://github.com/charlie2951/tflite_micro_rpi0/raw/main/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"
+    WHEEL_FILENAME=$(basename "$WHEEL_URLS")
+
+    # wgetまたはcurlでダウンロード（詳細ログ付き）
+    if command -v wget >/dev/null 2>&1; then
+        echo "wgetを使用してダウンロード中..."
+        if wget --timeout=30 --tries=2 "$WHEEL_URLS" -O "$WHEEL_FILENAME" 2>&1; then
+            if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
+                echo "✓ ダウンロード成功: $(ls -lh "$WHEEL_FILENAME")"
+                DOWNLOADED=true
+                WHEEL_FILE="$WHEEL_FILENAME"
             else
                 echo "❌ ファイルが空またはダウンロードに失敗"
                 rm -f "$WHEEL_FILENAME"
@@ -49,12 +59,11 @@ if command -v wget >/dev/null 2>&1; then
         fi
     elif command -v curl >/dev/null 2>&1; then
         echo "curlを使用してダウンロード中..."
-        if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URL" -o "$WHEEL_FILENAME" 2>&1; then
+        if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URLS" -o "$WHEEL_FILENAME" 2>&1; then
             if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
                 echo "✓ ダウンロード成功: $(ls -lh "$WHEEL_FILENAME")"
                 DOWNLOADED=true
                 WHEEL_FILE="$WHEEL_FILENAME"
-                break
             else
                 echo "❌ ファイルが空またはダウンロードに失敗"
                 rm -f "$WHEEL_FILENAME"
@@ -62,20 +71,21 @@ if command -v wget >/dev/null 2>&1; then
         fi
     else
         echo "❌ wget または curl が見つかりません"
-        break
     fi
-    
-    echo "ダウンロード失敗: $WHEEL_URL"
-    echo ""
-done
+fi
 
 if [ "$DOWNLOADED" = false ]; then
-    echo "事前ビルド済みパッケージのダウンロードが失敗しました"
-else
-    echo "パッケージをインストール中..."
-    echo "ダウンロードされたファイル: $WHEEL_FILE"
-    
+    echo "パッケージの取得に失敗しました"
+    exit 1
+fi
+
+echo "パッケージをインストール中..."
+echo "使用ファイル: $WHEEL_FILE"
+
+# wheel（zip形式）の場合のみ展開処理（tar.gzは既に展開済み）
+if [[ "$WHEEL_FILE" == *.whl ]]; then
     python3 -m zipfile -e "$WHEEL_FILE" extracted/
+fi
         
     # 解凍されたファイル構造を確認
     echo "解凍されたファイル構造:"

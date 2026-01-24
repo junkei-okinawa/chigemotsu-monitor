@@ -15,7 +15,7 @@ Motionと連携し、撮影された画像をTensorFlow Liteモデルで解析�
 ![Chigemotsu Monitor Architecture](./static/chigemotsu-monitor.png)
 
 ```
-production/
+.
 ├── 📁 config/                        # 設定ファイル
 │   ├── config.json                   # メイン設定
 ├── 📁 scripts/                       # 実行スクリプト
@@ -47,6 +47,11 @@ cd chigemotsu-monitor
 ```bash
 # パイプラインのテスト実行
 python scripts/chigemotsu_pipeline.py --test
+
+# Systemdサービスの状態確認
+# ※ 事前に `libcamerify` コマンドを提供するパッケージをインストールしておいてください
+#    （詳細な手順は docs/DEPLOYMENT.md を参照）
+sudo systemctl status libcamerify_motion
 ```
 
 ## ドキュメント

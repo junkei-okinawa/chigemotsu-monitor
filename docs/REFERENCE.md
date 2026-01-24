@@ -6,6 +6,12 @@
 
 ## 📋 コマンドリファレンス
 
+> **注意**: 以下のコマンドを実行する前に、必ず仮想環境を有効化してください。
+> ```bash
+> cd /home/pi/chigemotsu-monitor
+> source .venv/bin/activate
+> ```
+
 ### 統合パイプライン（推奨）
 ```bash
 # motionからの自動呼び出し（通常は手動実行不要）
@@ -197,30 +203,52 @@ python scripts/integrated_detection.py --stats
 
 ### Motion連携設定
 
-1. **motion.conf編集**
-```bash
-sudo vim /etc/motion/motion.conf
-```
+インストールスクリプト (`setup/install.sh`) により、`/etc/motion/motion.conf` が自動的に更新され、画像保存時に `scripts/chigemotsu_detect.sh` が呼び出されるようになります。
 
-2. **設定追加**
-```
-# ちげもつ判別連携
-on_picture_save /home/pi/chigemotsu/chigemotsu-monitor/scripts/chigemotsu_detect.sh %f
-```
+### Systemdサービス管理
 
-3. **権限設定**
-```bash
-chmod +x scripts/chigemotsu_detect.sh
-```
+本システムは Systemd を利用してデーモン管理および定期実行を行っています。
 
-### systemdサービス設定
+#### 1. 猫検出サービス（Motion）
+`libcamerify` 経由で `motion` をバックグラウンド実行します。
 
 ```bash
-# motionサービス確認
-sudo systemctl status motion
+# 状態確認
+sudo systemctl status libcamerify_motion
+```
 
-# 自動起動設定
-sudo systemctl enable motion
+> **注意**: `libcamerify_motion` サービスは、コマンド `libcamerify` を前提としています。  
+> 代表的な環境 (Raspberry Pi OS / Debian系) では、`libcamerify` コマンドは `libcamerify` パッケージにより提供されます。  
+>
+> インストール例:
+> ```bash
+> sudo apt-get update
+> sudo apt-get install libcamerify
+> ```
+
+```bash
+# ログ確認
+sudo journalctl -u libcamerify_motion -f
+
+# 停止・起動
+sudo systemctl stop libcamerify_motion
+sudo systemctl start libcamerify_motion
+```
+
+#### 2. 定期実行タスク（Timers）
+Cronの代わりに Systemd Timers を使用しています。
+
+```bash
+# タイマー一覧の確認
+sudo systemctl list-timers --all | grep chigemotsu
+
+# 日次サマリー送信 (毎日 23:50)
+sudo systemctl status chigemotsu_daily_summary.timer
+# 手動での即時実行
+sudo systemctl start chigemotsu_daily_summary.service
+
+# 日次リブート (毎日 23:59)
+sudo systemctl status chigemotsu_daily_reboot.timer
 ```
 
 ### 監視とメンテナンス

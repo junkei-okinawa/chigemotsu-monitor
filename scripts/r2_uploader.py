@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import os
+import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -358,7 +359,7 @@ class R2Uploader:
             return False
 
 
-if __name__ == "__main__":
+def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Cloudflare R2 Image Uploader")
@@ -369,7 +370,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("--image", help="Image file path (for upload)")
     parser.add_argument(
-        "--config", default="../config/config.json", help="Config file path"
+        "--config",
+        default=str(project_root / "config" / "config.json"),
+        help="Config file path",
     )
     parser.add_argument("--description", default="", help="Image description")
     parser.add_argument(
@@ -378,25 +381,20 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # 設定読み込み
-    with open(args.config) as f:
-        config = json.load(f)
-
-    logging.basicConfig(level=logging.INFO)
-
     try:
-        uploader = R2Uploader(config)
+        uploader = R2Uploader(args.config)
 
         if args.command == "test":
             if uploader.test_connection():
                 print("✅ R2接続テスト成功")
             else:
                 print("❌ R2接続テスト失敗")
+                sys.exit(1)
 
         elif args.command == "upload":
             if not args.image:
                 print("Error: --image required for upload")
-                exit(1)
+                sys.exit(1)
             url = uploader.upload_image(args.image, args.description)
             print(f"Upload successful: {url}")
 
@@ -421,4 +419,8 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"Error: {e}")
-        exit(1)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

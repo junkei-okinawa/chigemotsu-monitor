@@ -6,7 +6,7 @@
 
 1. **認証情報ファイルを作成**:
 ```bash
-cp production/config/r2_credentials.json.sample production/config/r2_credentials.json
+cp config/r2_credentials.json.sample config/r2_credentials.json
 ```
 
 2. **認証情報、公開URLを入力**:
@@ -27,20 +27,26 @@ cp production/config/r2_credentials.json.sample production/config/r2_credentials
 - `r2_credentials.json` ファイルは `.gitignore` に追加済み
 - ファイル権限を適切に設定:
 ```bash
-chmod 600 production/config/r2_credentials.json
+chmod 600 config/r2_credentials.json
 ```
 
 ## 設定の確認
 
 ```bash
-# R2接続テスト
-python3 production/scripts/r2_uploader.py --test
+# プロジェクトのリポジトリルートに移動 (例)
+cd /home/pi/chigemotsu-monitor
 
-# 設定ファイル確認
+# 仮想環境を有効化（setup/install.sh で作成された .venv を利用）
+source .venv/bin/activate
+
+# R2接続テスト
+python3 scripts/r2_uploader.py test --config config/config.json
+
+# 設定と接続の最終確認 (R2Uploaderの初期化チェック)
 python3 -c "
-from production.scripts.r2_uploader import R2Uploader
+from scripts.r2_uploader import R2Uploader
 uploader = R2Uploader()
-print('✅ R2設定が正常に読み込まれました')
+print('✅ R2設定が読み込まれ、バケットへの接続が確認されました')
 "
 ```
 

@@ -22,11 +22,6 @@ Cloudflare R2ストレージを使用してLINE通知に画像を含める機能
 - TFLiteモデルを使用した物体検出
 - 連続監視機能
 
-### 4. セットアップスクリプト (`setup_line_notifications.sh`)
-- Raspberry Pi Zero用の自動セットアップ
-- 依存関係のインストール
-- systemdサービスの設定
-
 ## 設定
 
 ### config.json
@@ -62,50 +57,56 @@ Cloudflare R2ストレージを使用してLINE通知に画像を含める機能
 
 ### 1. セットアップ（Raspberry Pi Zero）
 ```bash
-cd /opt/chigemotsu/chigemotsu-monitor/scripts
-chmod +x setup_line_notifications.sh
-./setup_line_notifications.sh
+# リポジトリをクローンしたディレクトリ（例）
+cd /home/pi/chigemotsu-monitor
+
+# メインのインストールスクリプトを実行（依存関係やサービスが登録されます）
+./setup/install.sh
 ```
 
 ### 2. R2接続テスト
 ```bash
-python3 r2_uploader.py --test
+# 仮想環境を有効化（setup/install.sh で作成された .venv を利用）
+source .venv/bin/activate
+
+# リポジトリルートから実行する場合
+python3 scripts/r2_uploader.py test --config config/config.json
 ```
 
 ### 3. LINE通知テスト
 ```bash
+# 仮想環境を有効化（未実行の場合）
+source .venv/bin/activate
+
 # シンプルなテスト
-python3 test_line_notification.py --simple
+python3 scripts/test_line_notification.py --test simple
 
-# 画像通知テスト
-python3 test_line_notification.py --image
-
-# 全機能テスト
-python3 test_line_notification.py --all
+# 画像付き通知テスト
+python3 scripts/line_image_notifier.py --test
 ```
 
 ### 4. 画像通知の送信
 ```bash
 # 単体で画像通知を送信
-python3 line_image_notifier.py --image /path/to/image.jpg --message "検出結果です"
+python3 scripts/line_image_notifier.py --image /path/to/image.jpg --message "検出結果です"
 
 # テスト画像で通知
-python3 line_image_notifier.py --test
+python3 scripts/line_image_notifier.py --test
 
 # ストレージ統計を確認
-python3 line_image_notifier.py --stats
+python3 scripts/line_image_notifier.py --stats
 ```
 
 ### 5. 統合検出システム
 ```bash
 # 単発検出（撮影→推論→通知）
-python3 integrated_detection.py --single
+python3 scripts/integrated_detection.py --single
 
 # 連続監視（30秒間隔）
-python3 integrated_detection.py --monitor --interval 30
+python3 scripts/integrated_detection.py --monitor --interval 30
 
 # 統計情報表示
-python3 integrated_detection.py --stats
+python3 scripts/integrated_detection.py --stats
 ```
 
 ## プログラム内での使用

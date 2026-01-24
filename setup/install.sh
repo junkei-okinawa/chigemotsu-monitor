@@ -17,7 +17,7 @@ echo "Installing Cat Detection System for Raspberry Pi Zero..."
 sudo apt update && sudo apt upgrade -y
 
 # 必要パッケージインストール
-sudo apt install -y git openssl libssl-dev libbz2-dev libreadline-dev libsqlite3-dev python3-pip motion
+sudo apt install -y git openssl libssl-dev libbz2-dev libreadline-dev libsqlite3-dev python3-pip motion libcamerify
 
 # ディレクトリ作成
 sudo mkdir -p "${BASE_DIR}"/{models,scripts,config,logs,temp}
@@ -55,7 +55,7 @@ fi
 echo "Creating Python virtual environment..."
 cd "${BASE_DIR}"
 echo "3.9.19" > .python-version
-uv sync --python-version .python-version
+uv sync --python 3.9.19
 source .venv/bin/activate
 
 # 最適化されたtflite Micro Runtimeをインストール
@@ -172,8 +172,8 @@ fi
 echo "Setup completed!"
 echo ""
 echo "Next steps:"
-echo "1. Copy your ONNX model to ${MODELS_DIR}/"
-echo "   scp your_tflite_micro_model.tflite ${USER}@raspberrypi:${MODELS_DIR}/mobilenet_v2_tflite_micro.tflite"
+echo "1. Copy your TFLite Micro model to ${MODELS_DIR}/"
+echo "   scp your_tflite_micro_model.tflite ${USER}@raspberrypi:${MODELS_DIR}/mobilenet_v2_micro_float32.tflite"
 echo ""
 echo "2. Edit LINE credentials:"
 echo "   nano ${CONFIG_DIR}/line_credentials.json"
@@ -185,8 +185,8 @@ echo ""
 echo "4. Check logs:"
 echo "   # Service logs"
 echo "   sudo journalctl -u libcamerify_motion -f"
-echo "   # Python app logs"
-echo "   tail -f ${LOGS_DIR}/cat_detection_motion.log"
+echo "   # Application logs"
+echo "   tail -f ${LOGS_DIR}/chigemotsu_pipeline.log"
 echo ""
 echo "5. Stop/Start the system:"
 echo "   sudo systemctl stop libcamerify_motion"

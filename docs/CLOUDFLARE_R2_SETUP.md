@@ -66,12 +66,18 @@ cd /home/pi/chigemotsu-monitor
 
 ### 2. R2接続テスト
 ```bash
+# 仮想環境を有効化（setup/install.sh で作成された .venv を利用）
+source .venv/bin/activate
+
 # リポジトリルートから実行する場合
 python3 scripts/r2_uploader.py test --config config/config.json
 ```
 
 ### 3. LINE通知テスト
 ```bash
+# 仮想環境を有効化（未実行の場合）
+source .venv/bin/activate
+
 # シンプルなテスト
 python3 scripts/test_line_notification.py --test simple
 

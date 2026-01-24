@@ -36,6 +36,9 @@ chmod 600 config/r2_credentials.json
 # プロジェクトのリポジトリルートに移動 (例)
 cd /home/pi/chigemotsu-monitor
 
+# 仮想環境を有効化（setup/install.sh で作成された .venv を利用）
+source .venv/bin/activate
+
 # R2接続テスト
 python3 scripts/r2_uploader.py test --config config/config.json
 

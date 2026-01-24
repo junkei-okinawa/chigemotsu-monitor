@@ -6,6 +6,12 @@
 
 ## 📋 コマンドリファレンス
 
+> **注意**: 以下のコマンドを実行する前に、必ず仮想環境を有効化してください。
+> ```bash
+> cd /home/pi/chigemotsu-monitor
+> source .venv/bin/activate
+> ```
+
 ### 統合パイプライン（推奨）
 ```bash
 # motionからの自動呼び出し（通常は手動実行不要）

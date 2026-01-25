@@ -104,7 +104,15 @@ if [ "$DOWNLOADED" = false ]; then
     
     # GitHubリポジトリからTensorFlow Lite Runtime の軽量版をダウンロード
     # セキュリティのため特定のコミットハッシュにピン留め
-    # Commit de1e21b5f2d95e459b1f705994190e6f38978e96 - tflite_micro_runtime 1.2.2 (cp39, linux_armv6l)
+    # Commit: de1e21b5f2d95e459b1f705994190e6f38978e96 - tflite_micro_runtime 1.2.2 (cp39, linux_armv6l)
+    # Commit ページ: https://github.com/charlie2951/tflite_micro_rpi0/commit/de1e21b5f2d95e459b1f705994190e6f38978e96
+    #   - 上記リンク先でコミット日時や変更内容を確認できます。
+    #   - 新しいバージョンを使用する場合の手順:
+    #       1. リポジトリ (https://github.com/charlie2951/tflite_micro_rpi0) で目的のコミットまたはリリースを選択
+    #       2. 対応する .whl ファイル名 (バージョン / Python / アーキテクチャ) を確認
+    #       3. 下記 URL 中のコミットハッシュおよび .whl ファイル名を更新
+    #       4. REMOTE_SHA256 などのチェックサムを新しい .whl に合わせて更新
+    #       5. このコメントに新しいコミットハッシュ / 用途 / 更新理由を追記
     WHEEL_URL="https://github.com/charlie2951/tflite_micro_rpi0/raw/de1e21b5f2d95e459b1f705994190e6f38978e96/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"
     WHEEL_FILENAME=$(basename "$WHEEL_URL")
     WHEEL_FULLPATH="${WORK_DIR}/${WHEEL_FILENAME}"
@@ -130,7 +138,8 @@ if [ "$DOWNLOADED" = false ]; then
         fi
     elif command -v curl >/dev/null 2>&1; then
         echo "curlを使用してダウンロード中..."
-        if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URL" -o "$WHEEL_FULLPATH"; then
+        # -f/--fail オプションを追加して HTTP エラー時に非ゼロステータスを返すようにする
+        if curl --connect-timeout 30 --max-time 300 -f -L "$WHEEL_URL" -o "$WHEEL_FULLPATH"; then
             if [ -f "$WHEEL_FULLPATH" ] && [ -s "$WHEEL_FULLPATH" ]; then
                 # チェックサム検証
                 if verify_checksum "$REMOTE_SHA256" "$WHEEL_FULLPATH"; then
@@ -170,7 +179,10 @@ import zipfile
 def is_within_directory(directory: str, target: str) -> bool:
     directory = os.path.realpath(directory)
     target = os.path.realpath(target)
-    return os.path.commonpath([directory]) == os.path.commonpath([directory, target])
+    try:
+        return os.path.commonpath([directory, target]) == directory
+    except ValueError:
+        return False
 
 def main() -> int:
     if len(sys.argv) != 3:
@@ -231,10 +243,16 @@ if [ -z "$PYTHON_LIB_PATH" ]; then
     exit 1
 fi
 
-# 想定外のパスへの書き込みを防ぐため、/lib/python を含むかチェック
-if [[ "$PYTHON_LIB_PATH" != *"/lib/python"* ]]; then
-    echo "Error: 予期しない Python ライブラリパスが検出されました: $PYTHON_LIB_PATH"
+# 想定外のパスへの書き込みを防ぐため、絶対パスかつ親ディレクトリが書き込み可能かチェック
+if [[ "$PYTHON_LIB_PATH" != /* ]]; then
+    echo "Error: 予期しない Python ライブラリパスが検出されました (絶対パスではありません): $PYTHON_LIB_PATH"
     echo "       Python 環境が正しく構成されているか確認してください。"
+    exit 1
+fi
+PARENT_DIR=$(dirname "$PYTHON_LIB_PATH")
+if [ ! -d "$PARENT_DIR" ] || [ ! -w "$PARENT_DIR" ]; then
+    echo "Error: Python ライブラリパスの親ディレクトリに書き込めません: $PARENT_DIR"
+    echo "       権限または Python 環境を確認してください。"
     exit 1
 fi
 
@@ -258,7 +276,8 @@ fi
 # パターン2: .data/purelib内を探索
 if [ "$FOUND_LIB" = false ]; then
     # サブシェル内で nullglob を有効にして、マッチしない場合にループをスキップするようにする
-    (
+    # 見つかった場合は exit 0 で成功を返し、親シェルで FOUND_LIB を true にする
+    if (
         shopt -s nullglob
         for data_dir in "${WORK_DIR}/extracted"/*.data; do
             if [ -d "$data_dir/purelib" ]; then
@@ -267,19 +286,25 @@ if [ "$FOUND_LIB" = false ]; then
                         LIB_NAME=$(basename "$lib_dir")
                         cp -r "$lib_dir" "$PYTHON_LIB_PATH/"
                         echo "✓ $LIB_NAME ライブラリを手動インストールしました (purelib経由)"
-                        # 親シェルの変数 FOUND_LIB を更新することはできないが、
-                        # 後続のチェックのためにフラグファイルを作成するなどの工夫が可能。
-                        # ここではシンプルに exit 0 で成功を伝える。
                         exit 0
                     fi
                 done
             fi
         done
         exit 1
-    ) && FOUND_LIB=true
+    ); then
+        FOUND_LIB=true
+    fi
 fi
 
-if [ "$FOUND_LIB" = false ]; then
+if [ "$FOUND_LIB" = true ]; then
+    # インストールしたファイルのパーミッションを適正化（書き込み権限を絞り、読み取り・実行を許可）
+    find "$PYTHON_LIB_PATH"/tflite* -type d -exec chmod 755 {} +
+    find "$PYTHON_LIB_PATH"/tflite* -type f -exec chmod 644 {} +
+    # .so ファイルは実行可能にする
+    find "$PYTHON_LIB_PATH"/tflite* -name "*.so" -exec chmod 755 {} +
+    echo "✓ インストールしたファイルのパーミッションを適正化しました"
+else
     echo "解凍されたディレクトリ構造:"
     ls -la "${WORK_DIR}/extracted"
     echo "❌ tflite_runtime または tflite_micro_runtime ディレクトリが見つかりません"

@@ -37,6 +37,9 @@ cd chigemotsu-monitor
 ./setup/install.sh
 ```
 
+> [!WARNING]
+> **注意**: Raspberry Pi Zero では `numpy` などのパッケージをソースからビルドするため、`install.sh` の完了まで **2〜4時間以上** かかる場合があります。処理が止まっているように見えても、そのままお待ちください。
+
 ### 2. 設定
 `config/` ディレクトリ内のサンプルファイルをコピーして認証情報を設定してください。
 

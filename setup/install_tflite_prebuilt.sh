@@ -29,6 +29,9 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # ローカルの事前ビルド済み TensorFlow Lite Runtime アーカイブ
 # - ファイル名: tflite_micro_runtime_rpiv6.tar.gz
 # - 期待される配置場所: プロジェクトルート直下（${PROJECT_ROOT}/tflite_micro_runtime_rpiv6.tar.gz）
+# - 期待される内部構造:
+#     アーカイブ直下に tflite_micro_runtime/ ディレクトリが存在すること。
+#     (例: tar -tf ファイル名 -> tflite_micro_runtime/...)
 # - 用途:
 #     - Raspberry Pi Zero (armv6l) 向けに別環境でビルドしたランタイムを、
 #       ネットワーク不要で素早くインストールするためのローカルキャッシュとして利用します。
@@ -74,8 +77,14 @@ if [ -f "$LOCAL_ARCHIVE" ]; then
             echo "⚠️  警告: ローカルパッケージの展開に失敗しました。ダウンロードを試行します。"
             DOWNLOADED=false
         else
-            DOWNLOADED=true
-            PACKAGE_FILE="$LOCAL_ARCHIVE"
+            # 構造の簡易検証
+            if [ -d "${WORK_DIR}/extracted/tflite_micro_runtime" ] || [ -d "${WORK_DIR}/extracted/tflite_runtime" ]; then
+                DOWNLOADED=true
+                PACKAGE_FILE="$LOCAL_ARCHIVE"
+            else
+                echo "⚠️  警告: ローカルパッケージの構造が不正です（期待されるディレクトリが見つかりません）。ダウンロードを試行します。"
+                DOWNLOADED=false
+            fi
         fi
     else
         echo "⚠️  警告: ローカルパッケージのチェックサムが一致しません。ダウンロードを試行します。"
@@ -112,7 +121,7 @@ if [ "$DOWNLOADED" = false ]; then
         fi
     elif command -v curl >/dev/null 2>&1; then
         echo "curlを使用してダウンロード中..."
-        if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URL" -o "$WHEEL_FILENAME" 2>&1; then
+        if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URL" -o "$WHEEL_FILENAME"; then
             if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
                 # チェックサム検証
                 if verify_checksum "$REMOTE_SHA256" "$WHEEL_FILENAME"; then

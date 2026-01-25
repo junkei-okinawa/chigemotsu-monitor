@@ -305,11 +305,9 @@ if [ "$FOUND_LIB" = false ]; then
 fi
 
 if [ "$FOUND_LIB" = true ]; then
-    # インストールしたファイルのパーミッションを適正化（書き込み権限を絞り、読み取り・実行を許可）
+    # インストールしたファイルのパーミッションを適正化（ディレクトリは実行可能、ファイルは読み取り専用）
     find "$PYTHON_LIB_PATH"/tflite* -type d -exec chmod 755 {} +
     find "$PYTHON_LIB_PATH"/tflite* -type f -exec chmod 644 {} +
-    # .so ファイルは実行可能にする
-    find "$PYTHON_LIB_PATH"/tflite* -name "*.so" -exec chmod 755 {} +
     echo "✓ インストールしたファイルのパーミッションを適正化しました"
 else
     echo "解凍されたディレクトリ構造:"

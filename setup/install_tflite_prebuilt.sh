@@ -70,9 +70,13 @@ if [ -f "$LOCAL_ARCHIVE" ]; then
     if verify_checksum "$LOCAL_SHA256" "$LOCAL_ARCHIVE"; then
         echo "✓ ローカルパッケージのチェックサム検証に成功しました"
         mkdir -p "${WORK_DIR}/extracted"
-        tar -xzf "$LOCAL_ARCHIVE" -C "${WORK_DIR}/extracted"
-        DOWNLOADED=true
-        PACKAGE_FILE="$LOCAL_ARCHIVE"
+        if ! tar -xzf "$LOCAL_ARCHIVE" -C "${WORK_DIR}/extracted" 2>/dev/null; then
+            echo "⚠️  警告: ローカルパッケージの展開に失敗しました。ダウンロードを試行します。"
+            DOWNLOADED=false
+        else
+            DOWNLOADED=true
+            PACKAGE_FILE="$LOCAL_ARCHIVE"
+        fi
     else
         echo "⚠️  警告: ローカルパッケージのチェックサムが一致しません。ダウンロードを試行します。"
     fi
@@ -81,7 +85,7 @@ fi
 if [ "$DOWNLOADED" = false ]; then
     echo "リモートパッケージのダウンロードを試行します..."
     
-    # 複数のソースからTensorFlow Lite Runtime の軽量版をダウンロード
+    # GitHubリポジトリからTensorFlow Lite Runtime の軽量版をダウンロード
     # セキュリティのため特定のコミットハッシュにピン留め
     # Commit de1e21b5f2d95e459b1f705994190e6f38978e96 - tflite_micro_runtime 1.2.2 (cp39, linux_armv6l)
     WHEEL_URL="https://github.com/charlie2951/tflite_micro_rpi0/raw/de1e21b5f2d95e459b1f705994190e6f38978e96/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"

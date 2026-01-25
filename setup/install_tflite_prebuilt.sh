@@ -29,6 +29,23 @@ LOCAL_ARCHIVE="${PROJECT_ROOT}/tflite_micro_runtime_rpiv6.tar.gz"
 LOCAL_SHA256="934363d4db8653942399dd316693715f6105390c49a0ba06f3175fef40986a90"
 REMOTE_SHA256="f8ec28dec040e5d1d2104f036b42f4d83d0d441f63edc51f178e8284c91ce38d"
 
+# チェックサム検証関数（shasum または sha256sum を使用）
+verify_checksum() {
+    local checksum=$1
+    local file=$2
+    
+    if command -v shasum >/dev/null 2>&1; then
+        echo "$checksum  $file" | shasum -a 256 -c - >/dev/null 2>&1
+        return $?
+    elif command -v sha256sum >/dev/null 2>&1; then
+        echo "$checksum  $file" | sha256sum -c - >/dev/null 2>&1
+        return $?
+    else
+        echo "Error: shasum も sha256sum も見つかりません。チェックサム検証ができません。" >&2
+        return 1
+    fi
+}
+
 DOWNLOADED=false
 PACKAGE_FILE=""
 
@@ -36,7 +53,7 @@ PACKAGE_FILE=""
 if [ -f "$LOCAL_ARCHIVE" ]; then
     echo "✓ ローカルのバイナリパッケージが見つかりました: $LOCAL_ARCHIVE"
     # チェックサム検証
-    if echo "$LOCAL_SHA256  $LOCAL_ARCHIVE" | shasum -a 256 -c - >/dev/null 2>&1; then
+    if verify_checksum "$LOCAL_SHA256" "$LOCAL_ARCHIVE"; then
         echo "✓ ローカルパッケージのチェックサム検証に成功しました"
         mkdir -p "${WORK_DIR}/extracted"
         tar -xzf "$LOCAL_ARCHIVE" -C "${WORK_DIR}/extracted"
@@ -52,16 +69,16 @@ if [ "$DOWNLOADED" = false ]; then
     
     # 複数のソースからTensorFlow Lite Runtime の軽量版をダウンロード
     # セキュリティのため特定のコミットハッシュにピン留め
-    WHEEL_URLS="https://github.com/charlie2951/tflite_micro_rpi0/raw/de1e21b5f2d95e459b1f705994190e6f38978e96/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"
-    WHEEL_FILENAME=$(basename "$WHEEL_URLS")
+    WHEEL_URL="https://github.com/charlie2951/tflite_micro_rpi0/raw/de1e21b5f2d95e459b1f705994190e6f38978e96/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"
+    WHEEL_FILENAME=$(basename "$WHEEL_URL")
 
     # wgetまたはcurlでダウンロード（詳細ログ付き）
     if command -v wget >/dev/null 2>&1; then
         echo "wgetを使用してダウンロード中..."
-        if wget --timeout=30 --tries=2 "$WHEEL_URLS" -O "$WHEEL_FILENAME" 2>&1; then
+        if wget --timeout=30 --tries=2 "$WHEEL_URL" -O "$WHEEL_FILENAME" 2>&1; then
             if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
                 # チェックサム検証
-                if echo "$REMOTE_SHA256  $WHEEL_FILENAME" | shasum -a 256 -c - >/dev/null 2>&1; then
+                if verify_checksum "$REMOTE_SHA256" "$WHEEL_FILENAME"; then
                     echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FILENAME")"
                     DOWNLOADED=true
                     PACKAGE_FILE="$WHEEL_FILENAME"
@@ -76,10 +93,10 @@ if [ "$DOWNLOADED" = false ]; then
         fi
     elif command -v curl >/dev/null 2>&1; then
         echo "curlを使用してダウンロード中..."
-        if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URLS" -o "$WHEEL_FILENAME" 2>&1; then
+        if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URL" -o "$WHEEL_FILENAME" 2>&1; then
             if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
                 # チェックサム検証
-                if echo "$REMOTE_SHA256  $WHEEL_FILENAME" | shasum -a 256 -c - >/dev/null 2>&1; then
+                if verify_checksum "$REMOTE_SHA256" "$WHEEL_FILENAME"; then
                     echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FILENAME")"
                     DOWNLOADED=true
                     PACKAGE_FILE="$WHEEL_FILENAME"

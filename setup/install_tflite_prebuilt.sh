@@ -161,7 +161,48 @@ echo "使用ファイル: $PACKAGE_FILE"
 
 # wheel（zip形式）の場合のみ展開処理（tar.gzは既に展開済み）
 if [[ "$PACKAGE_FILE" == *.whl ]]; then
-    if ! python3 -m zipfile -e "$PACKAGE_FILE" "${WORK_DIR}/extracted"; then
+    echo "wheel を安全に展開中..."
+    if ! python3 - "$PACKAGE_FILE" "${WORK_DIR}/extracted" << 'PY'; then
+import os
+import sys
+import zipfile
+
+def is_within_directory(directory: str, target: str) -> bool:
+    directory = os.path.realpath(directory)
+    target = os.path.realpath(target)
+    return os.path.commonpath([directory]) == os.path.commonpath([directory, target])
+
+def main() -> int:
+    if len(sys.argv) != 3:
+        print("Usage: safe_extract_wheel.py <wheel_path> <extract_dir>", file=sys.stderr)
+        return 1
+
+    wheel_path = sys.argv[1]
+    extract_dir = sys.argv[2]
+
+    os.makedirs(extract_dir, exist_ok=True)
+
+    try:
+        with zipfile.ZipFile(wheel_path, "r") as zf:
+            for member in zf.infolist():
+                member_name = member.filename
+                # Construct the destination path for this member
+                dest_path = os.path.join(extract_dir, member_name)
+                if not is_within_directory(extract_dir, dest_path):
+                    print(f"Error: Unsafe path detected in wheel: {member_name}", file=sys.stderr)
+                    return 1
+            # All paths are safe; perform extraction
+            zf.extractall(path=extract_dir)
+    except Exception as e:
+        print(f"Error: Failed to extract wheel: {e}", file=sys.stderr)
+        return 1
+
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+PY
+    then
         echo "Error: wheel の展開に失敗しました: $PACKAGE_FILE"
         exit 1
     fi
@@ -182,7 +223,21 @@ echo "全ディレクトリ構造:"
 ls -la "${WORK_DIR}/extracted"
 
 # Pythonライブラリパスを取得
-PYTHON_LIB_PATH=$(python3 -c "import site; print(site.getsitepackages()[0])")
+PYTHON_LIB_PATH=$(python3 -c "import site; paths = site.getsitepackages(); print(paths[0] if paths else '')" 2>/dev/null || echo "")
+
+# 取得したパスの妥当性を確認
+if [ -z "$PYTHON_LIB_PATH" ]; then
+    echo "Error: Python ライブラリパスを取得できませんでした。Python 環境を確認してください。"
+    exit 1
+fi
+
+# 想定外のパスへの書き込みを防ぐため、/lib/python を含むかチェック
+if [[ "$PYTHON_LIB_PATH" != *"/lib/python"* ]]; then
+    echo "Error: 予期しない Python ライブラリパスが検出されました: $PYTHON_LIB_PATH"
+    echo "       Python 環境が正しく構成されているか確認してください。"
+    exit 1
+fi
+
 echo "Python ライブラリパス: $PYTHON_LIB_PATH"
 mkdir -p "$PYTHON_LIB_PATH"
 
@@ -202,25 +257,26 @@ fi
 
 # パターン2: .data/purelib内を探索
 if [ "$FOUND_LIB" = false ]; then
-    # nullglobを有効にして、マッチしない場合にループをスキップするようにする
-    shopt -s nullglob
-    for data_dir in "${WORK_DIR}/extracted"/*.data; do
-        if [ -d "$data_dir/purelib" ]; then
-            for lib_dir in "$data_dir/purelib"/*; do
-                if [ -d "$lib_dir" ] && [[ "$(basename "$lib_dir")" == *"tflite"* ]]; then
-                    LIB_NAME=$(basename "$lib_dir")
-                    cp -r "$lib_dir" "$PYTHON_LIB_PATH/"
-                    echo "✓ $LIB_NAME ライブラリを手動インストールしました (purelib経由)"
-                    FOUND_LIB=true
-                    break
-                fi
-            done
-        fi
-        if [ "$FOUND_LIB" = true ]; then
-            break
-        fi
-    done
-    shopt -u nullglob
+    # サブシェル内で nullglob を有効にして、マッチしない場合にループをスキップするようにする
+    (
+        shopt -s nullglob
+        for data_dir in "${WORK_DIR}/extracted"/*.data; do
+            if [ -d "$data_dir/purelib" ]; then
+                for lib_dir in "$data_dir/purelib"/*; do
+                    if [ -d "$lib_dir" ] && [[ "$(basename "$lib_dir")" == *"tflite"* ]]; then
+                        LIB_NAME=$(basename "$lib_dir")
+                        cp -r "$lib_dir" "$PYTHON_LIB_PATH/"
+                        echo "✓ $LIB_NAME ライブラリを手動インストールしました (purelib経由)"
+                        # 親シェルの変数 FOUND_LIB を更新することはできないが、
+                        # 後続のチェックのためにフラグファイルを作成するなどの工夫が可能。
+                        # ここではシンプルに exit 0 で成功を伝える。
+                        exit 0
+                    fi
+                done
+            fi
+        done
+        exit 1
+    ) && FOUND_LIB=true
 fi
 
 if [ "$FOUND_LIB" = false ]; then

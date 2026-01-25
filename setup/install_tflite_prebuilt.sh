@@ -75,6 +75,7 @@ if [ -f "$LOCAL_ARCHIVE" ]; then
         mkdir -p "${WORK_DIR}/extracted"
         if ! tar -xzf "$LOCAL_ARCHIVE" -C "${WORK_DIR}/extracted" 2>/dev/null; then
             echo "⚠️  警告: ローカルパッケージの展開に失敗しました。ダウンロードを試行します。"
+            rm -rf "${WORK_DIR}/extracted"
             DOWNLOADED=false
         else
             # 構造の簡易検証
@@ -83,11 +84,18 @@ if [ -f "$LOCAL_ARCHIVE" ]; then
                 PACKAGE_FILE="$LOCAL_ARCHIVE"
             else
                 echo "⚠️  警告: ローカルパッケージの構造が不正です（期待されるディレクトリが見つかりません）。ダウンロードを試行します。"
+                rm -rf "${WORK_DIR}/extracted"
                 DOWNLOADED=false
             fi
         fi
     else
-        echo "⚠️  警告: ローカルパッケージのチェックサムが一致しません。ダウンロードを試行します。"
+        # verify_checksum が失敗した場合、チェックサムツールの有無を確認する
+        if ! command -v shasum >/dev/null 2>&1 && ! command -v sha256sum >/dev/null 2>&1; then
+            echo "⚠️  重要: チェックサム検証ツール (shasum / sha256sum) が見つかりません。"
+            echo "          この環境ではローカルアーカイブの整合性検証ができないため、セキュリティ保証が弱くなります。"
+            echo "          必要に応じてこれらのツールをインストールしてから再実行してください。"
+        fi
+        echo "⚠️  警告: ローカルパッケージのチェックサムが一致しない、または検証に失敗しました。ダウンロードを試行します。"
     fi
 fi
 
@@ -99,42 +107,43 @@ if [ "$DOWNLOADED" = false ]; then
     # Commit de1e21b5f2d95e459b1f705994190e6f38978e96 - tflite_micro_runtime 1.2.2 (cp39, linux_armv6l)
     WHEEL_URL="https://github.com/charlie2951/tflite_micro_rpi0/raw/de1e21b5f2d95e459b1f705994190e6f38978e96/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"
     WHEEL_FILENAME=$(basename "$WHEEL_URL")
+    WHEEL_FULLPATH="${WORK_DIR}/${WHEEL_FILENAME}"
 
     # wgetまたはcurlでダウンロード（詳細ログ付き）
     if command -v wget >/dev/null 2>&1; then
         echo "wgetを使用してダウンロード中..."
-        if wget --timeout=30 --tries=2 "$WHEEL_URL" -O "$WHEEL_FILENAME"; then
-            if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
+        if wget --timeout=30 --tries=2 "$WHEEL_URL" -O "$WHEEL_FULLPATH"; then
+            if [ -f "$WHEEL_FULLPATH" ] && [ -s "$WHEEL_FULLPATH" ]; then
                 # チェックサム検証
-                if verify_checksum "$REMOTE_SHA256" "$WHEEL_FILENAME"; then
-                    echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FILENAME")"
+                if verify_checksum "$REMOTE_SHA256" "$WHEEL_FULLPATH"; then
+                    echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FULLPATH")"
                     DOWNLOADED=true
-                    PACKAGE_FILE="$WHEEL_FILENAME"
+                    PACKAGE_FILE="$WHEEL_FULLPATH"
                 else
                     echo "❌ エラー: ダウンロードされたファイルのチェックサムが一致しません"
-                    rm -f "$WHEEL_FILENAME"
+                    rm -f "$WHEEL_FULLPATH"
                 fi
             else
                 echo "❌ ファイルが空またはダウンロードに失敗"
-                rm -f "$WHEEL_FILENAME"
+                rm -f "$WHEEL_FULLPATH"
             fi
         fi
     elif command -v curl >/dev/null 2>&1; then
         echo "curlを使用してダウンロード中..."
-        if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URL" -o "$WHEEL_FILENAME"; then
-            if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
+        if curl --connect-timeout 30 --max-time 300 -L "$WHEEL_URL" -o "$WHEEL_FULLPATH"; then
+            if [ -f "$WHEEL_FULLPATH" ] && [ -s "$WHEEL_FULLPATH" ]; then
                 # チェックサム検証
-                if verify_checksum "$REMOTE_SHA256" "$WHEEL_FILENAME"; then
-                    echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FILENAME")"
+                if verify_checksum "$REMOTE_SHA256" "$WHEEL_FULLPATH"; then
+                    echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FULLPATH")"
                     DOWNLOADED=true
-                    PACKAGE_FILE="$WHEEL_FILENAME"
+                    PACKAGE_FILE="$WHEEL_FULLPATH"
                 else
                     echo "❌ エラー: ダウンロードされたファイルのチェックサムが一致しません"
-                    rm -f "$WHEEL_FILENAME"
+                    rm -f "$WHEEL_FULLPATH"
                 fi
             else
                 echo "❌ ファイルが空またはダウンロードに失敗"
-                rm -f "$WHEEL_FILENAME"
+                rm -f "$WHEEL_FULLPATH"
             fi
         fi
     else
@@ -152,7 +161,16 @@ echo "使用ファイル: $PACKAGE_FILE"
 
 # wheel（zip形式）の場合のみ展開処理（tar.gzは既に展開済み）
 if [[ "$PACKAGE_FILE" == *.whl ]]; then
-    python3 -m zipfile -e "$PACKAGE_FILE" "${WORK_DIR}/extracted"
+    if ! python3 -m zipfile -e "$PACKAGE_FILE" "${WORK_DIR}/extracted"; then
+        echo "Error: wheel の展開に失敗しました: $PACKAGE_FILE"
+        exit 1
+    fi
+
+    # 展開結果のディレクトリが存在し、空でないことを確認
+    if [ ! -d "${WORK_DIR}/extracted" ] || [ -z "$(ls -A "${WORK_DIR}/extracted" 2>/dev/null)" ]; then
+        echo "Error: wheel の展開結果が見つからないか空です: ${WORK_DIR}/extracted"
+        exit 1
+    fi
 fi
         
 # 解凍されたファイル構造を確認
@@ -184,6 +202,8 @@ fi
 
 # パターン2: .data/purelib内を探索
 if [ "$FOUND_LIB" = false ]; then
+    # nullglobを有効にして、マッチしない場合にループをスキップするようにする
+    shopt -s nullglob
     for data_dir in "${WORK_DIR}/extracted"/*.data; do
         if [ -d "$data_dir/purelib" ]; then
             for lib_dir in "$data_dir/purelib"/*; do
@@ -200,6 +220,7 @@ if [ "$FOUND_LIB" = false ]; then
             break
         fi
     done
+    shopt -u nullglob
 fi
 
 if [ "$FOUND_LIB" = false ]; then

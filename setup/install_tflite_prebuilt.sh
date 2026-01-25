@@ -30,7 +30,7 @@ LOCAL_SHA256="934363d4db8653942399dd316693715f6105390c49a0ba06f3175fef40986a90"
 REMOTE_SHA256="f8ec28dec040e5d1d2104f036b42f4d83d0d441f63edc51f178e8284c91ce38d"
 
 DOWNLOADED=false
-WHEEL_FILE=""
+PACKAGE_FILE=""
 
 # まずローカルのアーカイブをチェック
 if [ -f "$LOCAL_ARCHIVE" ]; then
@@ -38,10 +38,10 @@ if [ -f "$LOCAL_ARCHIVE" ]; then
     # チェックサム検証
     if echo "$LOCAL_SHA256  $LOCAL_ARCHIVE" | shasum -a 256 -c - >/dev/null 2>&1; then
         echo "✓ ローカルパッケージのチェックサム検証に成功しました"
-        mkdir -p extracted
-        tar -xzf "$LOCAL_ARCHIVE" -C extracted/
+        mkdir -p "${WORK_DIR}/extracted"
+        tar -xzf "$LOCAL_ARCHIVE" -C "${WORK_DIR}/extracted"
         DOWNLOADED=true
-        WHEEL_FILE="$LOCAL_ARCHIVE"
+        PACKAGE_FILE="$LOCAL_ARCHIVE"
     else
         echo "⚠️  警告: ローカルパッケージのチェックサムが一致しません。ダウンロードを試行します。"
     fi
@@ -64,7 +64,7 @@ if [ "$DOWNLOADED" = false ]; then
                 if echo "$REMOTE_SHA256  $WHEEL_FILENAME" | shasum -a 256 -c - >/dev/null 2>&1; then
                     echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FILENAME")"
                     DOWNLOADED=true
-                    WHEEL_FILE="$WHEEL_FILENAME"
+                    PACKAGE_FILE="$WHEEL_FILENAME"
                 else
                     echo "❌ エラー: ダウンロードされたファイルのチェックサムが一致しません"
                     rm -f "$WHEEL_FILENAME"
@@ -82,7 +82,7 @@ if [ "$DOWNLOADED" = false ]; then
                 if echo "$REMOTE_SHA256  $WHEEL_FILENAME" | shasum -a 256 -c - >/dev/null 2>&1; then
                     echo "✓ ダウンロード成功およびチェックサム検証に成功: $(ls -lh "$WHEEL_FILENAME")"
                     DOWNLOADED=true
-                    WHEEL_FILE="$WHEEL_FILENAME"
+                    PACKAGE_FILE="$WHEEL_FILENAME"
                 else
                     echo "❌ エラー: ダウンロードされたファイルのチェックサムが一致しません"
                     rm -f "$WHEEL_FILENAME"
@@ -103,67 +103,66 @@ if [ "$DOWNLOADED" = false ]; then
 fi
 
 echo "パッケージをインストール中..."
-echo "使用ファイル: $WHEEL_FILE"
+echo "使用ファイル: $PACKAGE_FILE"
 
 # wheel（zip形式）の場合のみ展開処理（tar.gzは既に展開済み）
-if [[ "$WHEEL_FILE" == *.whl ]]; then
-    python3 -m zipfile -e "$WHEEL_FILE" extracted/
+if [[ "$PACKAGE_FILE" == *.whl ]]; then
+    python3 -m zipfile -e "$PACKAGE_FILE" "${WORK_DIR}/extracted"
 fi
         
-    # 解凍されたファイル構造を確認
-    echo "解凍されたファイル構造:"
-    find extracted/ -type d -name "*tflite*" | head -10
-    find extracted/ -name "*.py" | head -5
-    find extracted/ -name "*.so" | head -5
-    echo "全ディレクトリ構造:"
-    ls -la extracted/
-    
-    # Pythonライブラリパスを取得
-    PYTHON_LIB_PATH=$(python3 -c "import site; print(site.getsitepackages()[0])")
-    echo "Python ライブラリパス: $PYTHON_LIB_PATH"
-    mkdir -p "$PYTHON_LIB_PATH"
-    
-    # ライブラリファイルをコピー（wheelのpurelibディレクトリを探索）
-    FOUND_LIB=false
-    
-    # パターン1: 直接ディレクトリ
-    if [ -d "extracted/tflite_micro_runtime" ]; then
-        cp -r extracted/tflite_micro_runtime "$PYTHON_LIB_PATH/"
-        echo "✓ tflite_micro_runtime ライブラリを手動インストールしました"
-        FOUND_LIB=true
-    elif [ -d "extracted/tflite_runtime" ]; then
-        cp -r extracted/tflite_runtime "$PYTHON_LIB_PATH/"
-        echo "✓ tflite_runtime ライブラリを手動インストールしました"
-        FOUND_LIB=true
-    fi
-    
-    # パターン2: .data/purelib内を探索
-    if [ "$FOUND_LIB" = false ]; then
-        for data_dir in extracted/*.data; do
-            if [ -d "$data_dir/purelib" ]; then
-                for lib_dir in "$data_dir/purelib"/*; do
-                    if [ -d "$lib_dir" ] && [[ "$(basename "$lib_dir")" == *"tflite"* ]]; then
-                        LIB_NAME=$(basename "$lib_dir")
-                        cp -r "$lib_dir" "$PYTHON_LIB_PATH/"
-                        echo "✓ $LIB_NAME ライブラリを手動インストールしました (purelib経由)"
-                        FOUND_LIB=true
-                        break
-                    fi
-                done
-            fi
-            if [ "$FOUND_LIB" = true ]; then
-                break
-            fi
-        done
-    fi
-    
-    if [ "$FOUND_LIB" = false ]; then
-        echo "解凍されたディレクトリ構造:"
-        ls -la extracted/
-        echo "❌ tflite_runtime または tflite_micro_runtime ディレクトリが見つかりません"
-        echo "wheelファイルの内容を確認してください: $WORK_DIR/extracted/"
-        exit 1
-    fi
+# 解凍されたファイル構造を確認
+echo "解凍されたファイル構造:"
+find "${WORK_DIR}/extracted" -type d -name "*tflite*" | head -10
+find "${WORK_DIR}/extracted" -name "*.py" | head -5
+find "${WORK_DIR}/extracted" -name "*.so" | head -5
+echo "全ディレクトリ構造:"
+ls -la "${WORK_DIR}/extracted"
+
+# Pythonライブラリパスを取得
+PYTHON_LIB_PATH=$(python3 -c "import site; print(site.getsitepackages()[0])")
+echo "Python ライブラリパス: $PYTHON_LIB_PATH"
+mkdir -p "$PYTHON_LIB_PATH"
+
+# ライブラリファイルをコピー
+FOUND_LIB=false
+
+# パターン1: 直接ディレクトリ
+if [ -d "${WORK_DIR}/extracted/tflite_micro_runtime" ]; then
+    cp -r "${WORK_DIR}/extracted/tflite_micro_runtime" "$PYTHON_LIB_PATH/"
+    echo "✓ tflite_micro_runtime ライブラリを手動インストールしました"
+    FOUND_LIB=true
+elif [ -d "${WORK_DIR}/extracted/tflite_runtime" ]; then
+    cp -r "${WORK_DIR}/extracted/tflite_runtime" "$PYTHON_LIB_PATH/"
+    echo "✓ tflite_runtime ライブラリを手動インストールしました"
+    FOUND_LIB=true
+fi
+
+# パターン2: .data/purelib内を探索
+if [ "$FOUND_LIB" = false ]; then
+    for data_dir in "${WORK_DIR}/extracted"/*.data; do
+        if [ -d "$data_dir/purelib" ]; then
+            for lib_dir in "$data_dir/purelib"/*; do
+                if [ -d "$lib_dir" ] && [[ "$(basename "$lib_dir")" == *"tflite"* ]]; then
+                    LIB_NAME=$(basename "$lib_dir")
+                    cp -r "$lib_dir" "$PYTHON_LIB_PATH/"
+                    echo "✓ $LIB_NAME ライブラリを手動インストールしました (purelib経由)"
+                    FOUND_LIB=true
+                    break
+                fi
+            done
+        fi
+        if [ "$FOUND_LIB" = true ]; then
+            break
+        fi
+    done
+fi
+
+if [ "$FOUND_LIB" = false ]; then
+    echo "解凍されたディレクトリ構造:"
+    ls -la "${WORK_DIR}/extracted"
+    echo "❌ tflite_runtime または tflite_micro_runtime ディレクトリが見つかりません"
+    echo "パッケージの内容を確認してください: ${WORK_DIR}/extracted/"
+    exit 1
 fi
 
 echo "インストール確認中..."

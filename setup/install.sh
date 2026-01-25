@@ -53,7 +53,7 @@ fi
 
 # Python仮想環境作成
 echo "Creating Python virtual environment..."
-echo "⚠️ 警告: このステップ (uv sync) は Raspberry Pi Zero では 2〜4 時間かかることがあります。"
+echo "⚠️ 警告: このステップ (uv sync) は Raspberry Pi Zero では 2〜4時間以上かかることがあります。"
 echo "   'numpy' などのパッケージをソースからビルドします。処理が完了するまで中断しないでください。"
 cd "${BASE_DIR}"
 echo "3.9.19" > .python-version

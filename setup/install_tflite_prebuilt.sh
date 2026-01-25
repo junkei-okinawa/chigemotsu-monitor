@@ -73,11 +73,18 @@ if [ -f "$LOCAL_ARCHIVE" ]; then
     if verify_checksum "$LOCAL_SHA256" "$LOCAL_ARCHIVE"; then
         echo "✓ ローカルパッケージのチェックサム検証に成功しました"
         mkdir -p "${WORK_DIR}/extracted"
-        if ! tar -xzf "$LOCAL_ARCHIVE" -C "${WORK_DIR}/extracted" 2>/dev/null; then
+        TAR_ERR_LOG="${WORK_DIR}/tar_extract_local.err"
+        if ! tar -xzf "$LOCAL_ARCHIVE" -C "${WORK_DIR}/extracted" 2> "${TAR_ERR_LOG}"; then
             echo "⚠️  警告: ローカルパッケージの展開に失敗しました。ダウンロードを試行します。"
+            if [ -s "${TAR_ERR_LOG}" ]; then
+                echo "    詳細 (tar エラー):" >&2
+                cat "${TAR_ERR_LOG}" >&2
+            fi
+            rm -f "${TAR_ERR_LOG}"
             rm -rf "${WORK_DIR}/extracted"
             DOWNLOADED=false
         else
+            rm -f "${TAR_ERR_LOG}"
             # 構造の簡易検証
             if [ -d "${WORK_DIR}/extracted/tflite_micro_runtime" ] || [ -d "${WORK_DIR}/extracted/tflite_runtime" ]; then
                 DOWNLOADED=true

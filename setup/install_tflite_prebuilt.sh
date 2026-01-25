@@ -25,6 +25,20 @@ cd "$WORK_DIR"
 # プロジェクトルートを取得（このスクリプトの2つ上の階層）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# ローカルの事前ビルド済み TensorFlow Lite Runtime アーカイブ
+# - ファイル名: tflite_micro_runtime_rpiv6.tar.gz
+# - 期待される配置場所: プロジェクトルート直下（${PROJECT_ROOT}/tflite_micro_runtime_rpiv6.tar.gz）
+# - 用途:
+#     - Raspberry Pi Zero (armv6l) 向けに別環境でビルドしたランタイムを、
+#       ネットワーク不要で素早くインストールするためのローカルキャッシュとして利用します。
+# - 任意のファイルです:
+#     - このファイルが存在しない場合、またはチェックサム検証に失敗した場合は、
+#       スクリプトは自動的にリモートから公式配布物をダウンロードします。
+# - 更新方法:
+#     - 新しいアーカイブを作成または取得した場合は、対応する SHA256 を計算し、
+#       LOCAL_SHA256 をその値に更新してください。
+#     - 同様に、リモート配布物を更新した場合は REMOTE_SHA256 も更新してください。
 LOCAL_ARCHIVE="${PROJECT_ROOT}/tflite_micro_runtime_rpiv6.tar.gz"
 LOCAL_SHA256="934363d4db8653942399dd316693715f6105390c49a0ba06f3175fef40986a90"
 REMOTE_SHA256="f8ec28dec040e5d1d2104f036b42f4d83d0d441f63edc51f178e8284c91ce38d"
@@ -69,13 +83,14 @@ if [ "$DOWNLOADED" = false ]; then
     
     # 複数のソースからTensorFlow Lite Runtime の軽量版をダウンロード
     # セキュリティのため特定のコミットハッシュにピン留め
+    # Commit de1e21b5f2d95e459b1f705994190e6f38978e96 - tflite_micro_runtime 1.2.2 (cp39, linux_armv6l)
     WHEEL_URL="https://github.com/charlie2951/tflite_micro_rpi0/raw/de1e21b5f2d95e459b1f705994190e6f38978e96/tflite_micro_runtime-1.2.2-cp39-cp39-linux_armv6l.whl"
     WHEEL_FILENAME=$(basename "$WHEEL_URL")
 
     # wgetまたはcurlでダウンロード（詳細ログ付き）
     if command -v wget >/dev/null 2>&1; then
         echo "wgetを使用してダウンロード中..."
-        if wget --timeout=30 --tries=2 "$WHEEL_URL" -O "$WHEEL_FILENAME" 2>&1; then
+        if wget --timeout=30 --tries=2 "$WHEEL_URL" -O "$WHEEL_FILENAME"; then
             if [ -f "$WHEEL_FILENAME" ] && [ -s "$WHEEL_FILENAME" ]; then
                 # チェックサム検証
                 if verify_checksum "$REMOTE_SHA256" "$WHEEL_FILENAME"; then
